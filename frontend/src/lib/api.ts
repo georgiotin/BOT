@@ -2514,6 +2514,11 @@ export const api = {
     return request("/client/referral-stats", { token });
   },
 
+  async getLeaderboard(token: string, limit?: number): Promise<LeaderboardResponse> {
+    const params = limit ? `?limit=${limit}` : "";
+    return request(`/client/leaderboard${params}`, { token });
+  },
+
   // ─── Gift Subscriptions ─────────────────────────────────────────────────────
 
   /** Buy additional subscription (balance payment). Optional priceOptionId + extraDevices. */
@@ -3030,6 +3035,23 @@ export interface ClientReferralStats {
   referralPercentLevel3: number;
   referralCount: number;
   totalEarnings: number;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  displayName: string;
+  referralsCount: number;
+  totalEarned: number;
+  referralsRevenue: number;
+}
+
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[];
+  currentUser: {
+    rank: number | null;
+    referralsCount: number;
+    totalEarned: number;
+  } | null;
 }
 
 export interface SyncResult {
