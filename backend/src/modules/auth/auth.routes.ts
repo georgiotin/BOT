@@ -121,7 +121,7 @@ authRouter.post("/2fa/setup", requireAuth, async (req, res) => {
   if (!admin) return res.status(401).json({ message: "Требуется авторизация" });
   if (admin.totpEnabled) return res.status(400).json({ message: "2FA уже включена" });
   const secret = generateSecret();
-  const otpauthUrl = generateURI({ issuer: "STEALTHNET Admin", label: admin.email, secret });
+  const otpauthUrl = generateURI({ issuer: "AspectVPN Admin", label: admin.email, secret });
   await prisma.admin.update({ where: { id: adminId }, data: { totpSecret: secret, totpEnabled: false } });
   return res.json({ secret, otpauthUrl });
 });

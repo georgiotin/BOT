@@ -66,7 +66,7 @@ export const StadiumButton = forwardRef<HTMLButtonElement, Props>(function Stadi
       className={cn(
         "relative inline-flex items-center justify-center gap-2 rounded-full transition-all duration-300",
         "disabled:opacity-50 disabled:pointer-events-none",
-        "focus:outline-none focus:ring-2 focus:ring-saccent-500/40 focus:ring-offset-2 focus:ring-offset-[#020202]",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-saccent-500/40",
         VARIANT_STYLES[variant],
         SIZE_STYLES[size],
         fullWidth && "w-full",

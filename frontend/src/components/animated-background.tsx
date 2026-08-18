@@ -128,7 +128,7 @@ export function AnimatedBackground({ variant = "fixed", intensity = "normal" }: 
   }, [config.accent, resolvedMode]);
 
   return (
-    <div className={`${variant === "fixed" ? "fixed" : "absolute"} inset-0 ${variant === "fixed" ? "-z-50" : "z-0"} overflow-hidden ${intensity === "weak" ? "opacity-30" : ""}`} aria-hidden>
+    <div className={`${variant === "fixed" ? "fixed" : "absolute"} inset-0 ${variant === "fixed" ? "-z-50" : "z-0"} overflow-hidden pointer-events-none ${intensity === "weak" ? "opacity-30" : ""}`} aria-hidden>
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       {/* Слой размытия (эффект матового стекла поверх фонарей) */}
       <div className="absolute inset-0 bg-card pointer-events-none" />

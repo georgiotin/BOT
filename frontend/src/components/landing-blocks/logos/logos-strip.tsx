@@ -21,7 +21,7 @@ export function LogosStrip({ block }: { block: LandingApiBlock }) {
   if (items.length === 0) {
     return (
       <section className={`container mx-auto px-4 py-8 md:py-12 ${SECTION_SCROLL_OFFSET}`}>
-        <div className="rounded-xl border border-dashed border-slate-300 dark:border-border bg-card dark:bg-card p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="rounded-xl border border-dashed border-white/[0.1] bg-white/[0.04] backdrop-blur-xl p-8 text-center text-sm text-zinc-400">
           Добавь логотипы в props.items. Каждый — картинка через загрузчик.
         </div>
       </section>
@@ -32,8 +32,8 @@ export function LogosStrip({ block }: { block: LandingApiBlock }) {
     <section className={`container mx-auto px-4 py-8 md:py-12 ${SECTION_SCROLL_OFFSET}`}>
       {title || subtitle ? (
         <div className="mb-6 text-center">
-          {title ? <h2 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">{title}</h2> : null}
-          {subtitle ? <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{subtitle}</p> : null}
+          {title ? <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2> : null}
+          {subtitle ? <p className="mt-2 text-sm text-zinc-300">{subtitle}</p> : null}
         </div>
       ) : null}
 

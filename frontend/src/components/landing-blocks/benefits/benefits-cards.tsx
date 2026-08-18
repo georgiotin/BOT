@@ -37,13 +37,13 @@ export function BenefitsCards({ block }: { block: LandingApiBlock }) {
     <section id="benefits" className={`container mx-auto px-4 py-16 md:py-24 ${SECTION_SCROLL_OFFSET}`}>
       <div className="text-center">
         {badge ? (
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/60 dark:border-border bg-card dark:bg-card px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-600 dark:text-slate-300">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.32em] text-zinc-300">
             <Sparkles className="h-3.5 w-3.5" style={{ color: accentTheme.primary }} />
             {badge}
           </div>
         ) : null}
-        <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl dark:text-white">{title}</h2>
-        {subtitle ? <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300 md:text-lg">{subtitle}</p> : null}
+        <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-black tracking-[-0.04em] text-white md:text-5xl">{title}</h2>
+        {subtitle ? <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-zinc-300 md:text-lg">{subtitle}</p> : null}
       </div>
 
       <div className={`mt-10 grid gap-4 ${cardsCount === 4 ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2 lg:grid-cols-3"}`}>
@@ -57,13 +57,13 @@ export function BenefitsCards({ block }: { block: LandingApiBlock }) {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: idx * 0.05 }}
             >
-              <Card className="h-full border-slate-200/70 dark:border-border bg-card dark:bg-card">
+              <Card className="h-full border-white/[0.1] bg-white/[0.04] backdrop-blur-xl">
                 <CardContent className="p-6">
                   <div className="flex h-9 w-11 items-center justify-center rounded-xl" style={{ background: `${accentTheme.primary}18`, color: accentTheme.primary }}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-5 text-lg font-bold text-slate-950 dark:text-white">{it.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{it.desc}</p>
+                  <h3 className="mt-5 text-lg font-bold text-white">{it.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-300">{it.desc}</p>
                 </CardContent>
               </Card>
             </motion.div>

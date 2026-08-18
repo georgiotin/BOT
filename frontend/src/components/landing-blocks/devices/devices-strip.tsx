@@ -35,8 +35,8 @@ export function DevicesStrip({ block }: { block: LandingApiBlock }) {
   return (
     <section id="devices" className={`container mx-auto px-4 py-16 md:py-24 ${SECTION_SCROLL_OFFSET}`}>
       <div className="text-center">
-        <h2 className="text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-4xl dark:text-white">{title}</h2>
-        {subtitle ? <p className="mx-auto mt-3 max-w-xl text-base text-slate-600 dark:text-slate-300">{subtitle}</p> : null}
+        <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">{title}</h2>
+        {subtitle ? <p className="mx-auto mt-3 max-w-xl text-base text-zinc-300">{subtitle}</p> : null}
       </div>
 
       <div className="mx-auto mt-10 flex max-w-4xl flex-wrap justify-center gap-3">
@@ -49,10 +49,10 @@ export function DevicesStrip({ block }: { block: LandingApiBlock }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.35, delay: idx * 0.05 }}
-              className="flex items-center gap-2.5 rounded-full border border-slate-200/70 dark:border-border bg-card dark:bg-card px-5 py-3"
+              className="flex items-center gap-2.5 rounded-full border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl px-5 py-3"
             >
               <Icon className="h-4 w-4" style={{ color: accentTheme.primary }} />
-              <span className="text-sm font-medium text-slate-900 dark:text-white">{it.name}</span>
+              <span className="text-sm font-medium text-white">{it.name}</span>
             </motion.div>
           );
         })}

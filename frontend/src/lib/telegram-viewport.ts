@@ -71,21 +71,38 @@ function applyInsetWithFallback(): void {
 
 /** Форсирует разрешение вертикального скролла, которое TG WebView иногда глушит. */
 function ensureScrollUnlocked(): void {
-  const html = document.documentElement;
-  const body = document.body;
-  // touch-action: pan-y — TG WebView иногда "забывает" разрешить вертикальный
-  // свайп после requestFullscreen. Это размораживает скролл.
-  html.style.touchAction = "pan-y";
-  body.style.touchAction = "pan-y";
-  // На всякий случай убираем возможные блокировки overscroll.
-  html.style.overscrollBehaviorY = "contain";
+  if (document.documentElement.getAttribute("data-modal-open") === "1") return;
+  // Stealth-дизайн использует app-shell модель: скролл идёт внутри
+  // #stealth-layout-root, а html/body заблокированы (overflow:hidden).
+  // Не форсим тут overflow-y:auto, иначе документ снова сможет скроллиться
+  // и вернётся блокировка свайпа на Android / синий фон на iOS.
+  if (document.documentElement.getAttribute("data-stealth-scroll") === "1") return;
+
+  const tg = window.Telegram?.WebApp;
+  const isDesktop = tg && (tg.platform === "tdesktop" || tg.platform === "web" || tg.platform === "weba" || tg.platform === "webk");
+
+  if (!isDesktop) {
+    const html = document.documentElement;
+    const body = document.body;
+    html.style.touchAction = "pan-y";
+    body.style.touchAction = "pan-y";
+    html.style.overscrollBehaviorY = "contain";
+    html.style.overflowY = "auto";
+    body.style.overflowY = "auto";
+    html.style.minHeight = "100dvh";
+    body.style.minHeight = "100dvh";
+  }
 }
 
+let viewportInitialized = false;
+
 export function initTelegramViewport(): void {
+  if (viewportInitialized) return;
   if (typeof window === "undefined") return;
   const tg = window.Telegram?.WebApp;
   // Пустой initData = страницу открыли не из Telegram; вьюпорт не трогаем.
   if (!tg || !tg.initData?.trim()) return;
+  viewportInitialized = true;
 
   try {
     tg.ready();
@@ -105,77 +122,75 @@ export function initTelegramViewport(): void {
     /* Bot API < 6.1 — нет этих методов, ничего не поделать через JS */
   }
 
-  // На ПК не раскрываем на весь экран — оставляем компактное окно
   const isDesktop = tg.platform === "tdesktop" || tg.platform === "web" || tg.platform === "weba" || tg.platform === "webk";
 
+  try {
+    tg.expand();
+  } catch {
+    /* не поддерживается — останется высота по умолчанию */
+  }
+
   if (!isDesktop) {
-    try {
-      tg.expand();
-    } catch {
-      /* не поддерживается — останется высота по умолчанию */
-    }
-  }
-  try {
-    tg.disableVerticalSwipes?.();
-  } catch {
-    /* Bot API < 7.7 */
-  }
+    // T-fix-no-disable-vertical-swipes (2026-08-18): disableVerticalSwipes()
+    // на части Android-клиентов Telegram приводит к тому, что нативный слой
+    // начинает перехватывать ВСЕ вертикальные жесты и страница перестаёт
+    // скроллиться вовсе (юзер несколько раз подтверждал «не свайпает»).
+    // Метод экспериментальный (Bot API 7.7), поэтому убираем его: скролл
+    // важнее защиты от случайного закрытия шторки свайпом.
+    ensureScrollUnlocked();
 
-  ensureScrollUnlocked();
-
-  // Полный экран — только на мобильных устройствах, на ПК оставляем компактное окно
-  if (isDesktop || typeof tg.requestFullscreen !== "function") {
-    applyTopInset();
-    return;
-  }
-  try {
-    tg.requestFullscreen();
-  } catch {
-    applyTopInset();
-    return;
-  }
-
-  document.documentElement.dataset.tgFullscreen = "1";
-  // СРАЗУ ставим fallback, чтобы шапка TG не лежала на контенте до первого события.
-  applyInsetWithFallback();
-
-  // Честные инсеты приходят позже — несколько попыток с нарастающей задержкой.
-  setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 300);
-  setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 600);
-  setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 1200);
-  setTimeout(ensureScrollUnlocked, 2000);
-
-  // Отступы приходят не мгновенно и меняются при повороте экрана.
-  for (const ev of ["safeAreaChanged", "contentSafeAreaChanged", "viewportChanged"]) {
-    try {
-      tg.onEvent?.(ev, () => { applyTopInset(); ensureScrollUnlocked(); });
-    } catch {
-      /* событие неизвестно этой версии клиента */
-    }
-  }
-  try {
-    tg.onEvent?.("fullscreenChanged", () => {
-      if (tg.isFullscreen === false) {
-        delete document.documentElement.dataset.tgFullscreen;
-      } else {
-        document.documentElement.dataset.tgFullscreen = "1";
+    // Полный экран — только на мобильных устройствах
+    if (typeof tg.requestFullscreen === "function") {
+      try {
+        tg.requestFullscreen();
+      } catch {
         applyTopInset();
-        ensureScrollUnlocked();
+        return;
+      }
+
+      document.documentElement.dataset.tgFullscreen = "1";
+      applyInsetWithFallback();
+
+      setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 300);
+      setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 600);
+      setTimeout(() => { applyInsetWithFallback(); ensureScrollUnlocked(); }, 1200);
+      setTimeout(ensureScrollUnlocked, 2000);
+
+      for (const ev of ["safeAreaChanged", "contentSafeAreaChanged", "viewportChanged"]) {
         try {
-          tg.setHeaderColor?.("#0a0a0b");
-          tg.setBackgroundColor?.("#0a0a0b");
+          tg.onEvent?.(ev, () => { applyTopInset(); ensureScrollUnlocked(); });
         } catch {
-          /* Bot API < 6.1 */
+          /* событие неизвестно этой версии клиента */
         }
       }
-    });
-  } catch {
-    /* Bot API < 8.0 */
-  }
+      try {
+        tg.onEvent?.("fullscreenChanged", () => {
+          if (tg.isFullscreen === false) {
+            delete document.documentElement.dataset.tgFullscreen;
+          } else {
+            document.documentElement.dataset.tgFullscreen = "1";
+            applyTopInset();
+            ensureScrollUnlocked();
+            try {
+              tg.setHeaderColor?.("#0a0a0b");
+              tg.setBackgroundColor?.("#0a0a0b");
+            } catch {
+              /* Bot API < 6.1 */
+            }
+          }
+        });
+      } catch {
+        /* Bot API < 8.0 */
+      }
 
-  // Подстраховка для Android-клиентов, которые не шлют viewportChanged.
-  window.addEventListener("resize", () => { applyTopInset(); ensureScrollUnlocked(); }, { passive: true });
-  window.addEventListener("orientationchange", () => {
-    setTimeout(() => { applyTopInset(); ensureScrollUnlocked(); }, 250);
-  }, { passive: true });
+      window.addEventListener("resize", () => { applyTopInset(); ensureScrollUnlocked(); }, { passive: true });
+      window.addEventListener("orientationchange", () => {
+        setTimeout(() => { applyTopInset(); ensureScrollUnlocked(); }, 250);
+      }, { passive: true });
+    } else {
+      applyTopInset();
+    }
+  } else {
+    applyTopInset();
+  }
 }

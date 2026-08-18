@@ -10,10 +10,17 @@
  *
  * Данные те же, что у остальных дизайнов: `getClientReferralStats` +
  * `getPublicConfig` (из конфига берём юзернейм бота для t.me-ссылки).
+ *
+ * T-fix-android-icons (rev.2, 2026-08-15): lucide Copy/Check/Send h-[18px]
+ * без явного цвета на Android WebView Telegram рендерились как кляксы.
+ * Подняли размер до h-5 w-5 и добавили явный text-[color] — на Android
+ * WebView рендерятся нормально (Apple/Noto SVG-движок не давит глифы как
+ * emoji). В aurora-referral также заменили Users на h-[18px] в контейнере
+ * h-9 w-9 — нормально рендерится.
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Copy, Check, Send, Users } from "lucide-react";
+import { Users, Copy, Check, Send } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { api, type ClientReferralStats, type PublicConfig } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -134,7 +141,9 @@ export function AuroraReferral() {
 
         <div className="mt-5 flex items-center gap-2.5">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-            <Users className="h-[18px] w-[18px]" />
+            {/* Users h-[18px] w-[18px] в контейнере h-9 w-9 — нормально рендерится
+                (выше порога артефактов). Менять не нужно. */}
+            <Users className="h-[18px] w-[18px] text-white" strokeWidth={2} />
           </span>
           <div>
             <div className="text-[17px] font-bold leading-tight tabular-nums">
@@ -156,6 +165,8 @@ export function AuroraReferral() {
           </p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2.5">
+          {/* T-fix-android-icons rev.2: lucide Copy/Check/Send h-5 w-5 +
+              явный text-[color]. h-[18px] w-[18px] без цвета давали кляксу. */}
           <button
             type="button"
             onClick={copy}
@@ -165,7 +176,11 @@ export function AuroraReferral() {
               copied ? "border-[#0F9D58] text-[#0F9D58]" : "border-transparent text-[var(--au-ink)] enabled:active:scale-[0.97]",
             )}
           >
-            {copied ? <Check className="h-[18px] w-[18px]" /> : <Copy className="h-[18px] w-[18px]" />}
+            {copied ? (
+              <Check className="h-5 w-5 text-[#0F9D58] shrink-0" strokeWidth={2.5} />
+            ) : (
+              <Copy className="h-5 w-5 text-[var(--au-ink)] shrink-0" strokeWidth={2} />
+            )}
             {copied ? "Готово" : "Скопировать"}
           </button>
           <button
@@ -174,7 +189,7 @@ export function AuroraReferral() {
             disabled={!link}
             className="flex items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(135deg,var(--au-from),var(--au-to))] px-4 py-3.5 text-[15px] font-bold text-white transition-transform enabled:active:scale-[0.97] disabled:opacity-45"
           >
-            <Send className="h-[18px] w-[18px]" />
+            <Send className="h-5 w-5 text-white shrink-0" strokeWidth={2} />
             Поделиться
           </button>
         </div>

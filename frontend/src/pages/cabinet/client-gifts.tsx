@@ -1,9 +1,33 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Gift, Package, Copy, Check, Loader2, Plus, X, Calendar, Clock,
-  Send, Link as LinkIcon, CheckCircle2, Play, ShoppingCart, Mail,
-  XCircle, Trash, History, ChevronDown, ChevronUp, User, Sparkles, Smartphone
+  Gift,
+  Package,
+  Copy,
+  Check,
+  Loader2,
+  Plus,
+  X,
+  Calendar,
+  Clock,
+  Send,
+  Link as LinkIcon,
+  CheckCircle2,
+  Play,
+  ShoppingCart,
+  Mail,
+  XCircle,
+  Trash,
+  History,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Sparkles,
+  Smartphone,
+  CreditCard,
+  Zap,
+  Wallet
 } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { toast } from "@/components/ui/toast";
@@ -14,6 +38,9 @@ import { api, type PublicTariff, type PublicTariffCategory } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useCabinetMiniapp } from "@/pages/cabinet/cabinet-layout";
+import { PayNowPanel } from "@/components/payment/pay-now-panel";
+import { cn } from "@/lib/utils";
 
 function formatMoney(amount: number, currency: string = "usd") {
   return new Intl.NumberFormat("ru-RU", {
@@ -47,6 +74,17 @@ const HISTORY_EVENT_MAP: Record<string, { icon: React.ReactNode; label: string; 
   CODE_EXPIRED: { icon: <Clock className="w-5 h-5" />, label: "Код истёк", color: "text-yellow-600 dark:text-yellow-400 border-yellow-500/20 bg-yellow-500/10" },
   DELETED: { icon: <Trash className="w-5 h-5" />, label: "Подписка удалена", color: "text-red-500 border-red-500/20 bg-red-500/10" },
 };
+
+/** Цена пакета доп. устройств (та же формула что в client-tariffs). */
+function giftExtrasPrice(pricePerExtra: number, extras: number, tiers: { minExtraDevices: number; discountPercent: number }[] | undefined, durationDays: number): number {
+  const safe = Math.max(0, Math.floor(extras));
+  if (safe === 0 || pricePerExtra <= 0) return 0;
+  const sorted = [...(tiers ?? [])].sort((a, b) => b.minExtraDevices - a.minExtraDevices);
+  const tier = sorted.find((t) => safe >= t.minExtraDevices);
+  const pct = tier?.discountPercent ?? 0;
+  const monthly = pricePerExtra * safe * (100 - pct) / 100;
+  return Math.round(monthly * (Math.max(1, durationDays) / 30) * 100) / 100;
+}
 
 export function ClientGiftsPage() {
   const design = useCabinetDesign();
@@ -104,16 +142,34 @@ export function ClientGiftsPage() {
   const [codes, setCodes] = useState<Array<{ id: string; code: string; status: string; expiresAt: string; createdAt: string; redeemedAt: string | null; giftMessage: string | null; subscriptionId: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Buy Dialog State
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [tariffs, setTariffs] = useState<PublicTariff[]>([]);
   const [buyLoading, setBuyLoading] = useState(false);
   const [buyError, setBuyError] = useState<string | null>(null);
-  /** Картина «выбор опции + extras» для конкретного тарифа (вторая модалка). */
+
+  // FIX (2026-08-14): покупка подарка как покупка новой опции — расширенный picker
+  // с табами длительности, плитками доп. устройств, итогом и полным блоком выбора
+  // способа оплаты (баланс + все включённые провайдеры, как в client-extra-options).
   const [pickerTariff, setPickerTariff] = useState<PublicTariff | null>(null);
   const [pickerOptionId, setPickerOptionId] = useState<string | null>(null);
   const [pickerExtras, setPickerExtras] = useState<number>(0);
+  const [readyUrl, setReadyUrl] = useState<{ url: string; provider: string; paymentId?: string } | null>(null);
+
+  // Payment provider flags (из public/config)
+  const [plategaMethods, setPlategaMethods] = useState<{ id: number; label: string }[]>([]);
+  const [yoomoneyEnabled, setYoomoneyEnabled] = useState(false);
+  const [yookassaEnabled, setYookassaEnabled] = useState(false);
+  const [cryptopayEnabled, setCryptopayEnabled] = useState(false);
+  const [heleketEnabled, setHeleketEnabled] = useState(false);
+  const [rollypayEnabled, setRollypayEnabled] = useState(false);
+  const [lavaEnabled, setLavaEnabled] = useState(false);
+  const [overpayEnabled, setOverpayEnabled] = useState(false);
+  const [paymentProviders, setPaymentProviders] = useState<{ id: string; label: string; sortOrder: number }[]>([]);
+
+  const isMobileOrMiniapp = useCabinetMiniapp();
+  const navigate = useNavigate();
 
   // Redeem state
   const [redeemCode, setRedeemCode] = useState("");
@@ -124,7 +180,6 @@ export function ClientGiftsPage() {
   // Interaction states
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  // T-unify-cabinet (30.05.2026, WolfVPN): уведомление об успехе (паритет с ботом).
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // History states
@@ -138,9 +193,6 @@ export function ClientGiftsPage() {
     if (!token) return;
     try {
       setError(null);
-      // T-unify (12.05.2026, WolfVPN): используем `giftListSubscriptions` (без /all)
-      // — он отдаёт ТОЛЬКО подписки купленные для подарка (purchasedAsGift=true).
-      // Подписки которые юзер купил себе сюда не попадают (они в `/cabinet/dashboard`).
       const [subsRes, codesRes] = await Promise.all([
         api.giftListSubscriptions(token),
         api.giftListCodes(token),
@@ -169,13 +221,24 @@ export function ClientGiftsPage() {
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchHistory(historyPage); }, [historyPage, fetchHistory]);
 
+  // FIX (2026-08-14): провайдеры оплаты из public/config — чтобы picker подарка
+  // показывал тот же набор кнопок, что и client-extra-options.
   useEffect(() => {
-    fetchHistory(historyPage);
-  }, [historyPage, fetchHistory]);
+    api.getPublicConfig().then((c) => {
+      setPlategaMethods(c.plategaMethods ?? []);
+      setYoomoneyEnabled(Boolean(c.yoomoneyEnabled));
+      setYookassaEnabled(Boolean(c.yookassaEnabled));
+      setCryptopayEnabled(Boolean(c.cryptopayEnabled));
+      setHeleketEnabled(Boolean(c.heleketEnabled));
+      setRollypayEnabled(Boolean(c.rollypayEnabled));
+      setLavaEnabled(Boolean(c.lavaEnabled));
+      setOverpayEnabled(Boolean(c.overpayEnabled));
+      setPaymentProviders(c.paymentProviders ?? []);
+    }).catch(() => { /* ignore */ });
+  }, []);
 
   const loadTariffs = async () => {
     if (tariffs.length > 0) return;
@@ -194,7 +257,6 @@ export function ClientGiftsPage() {
     setBuyDialogOpen(true);
   };
 
-  // Открыть picker (длительность + доп. устройства) для выбранного тарифа.
   const openPicker = (t: PublicTariff) => {
     setPickerTariff(t);
     const opts = [...(t.priceOptions ?? [])].sort((a, b) =>
@@ -203,12 +265,14 @@ export function ClientGiftsPage() {
     setPickerOptionId(opts[0]?.id ?? null);
     setPickerExtras(0);
     setBuyError(null);
+    setReadyUrl(null);
   };
 
   const closePicker = () => {
     setPickerTariff(null);
     setPickerOptionId(null);
     setPickerExtras(0);
+    setReadyUrl(null);
   };
 
   const handleBuy = async () => {
@@ -216,10 +280,11 @@ export function ClientGiftsPage() {
     setBuyLoading(true);
     setBuyError(null);
     try {
+      // FIX (2026-08-14): остаёмся на специальном эндпоинте подарка — он
+      // создаёт GIFT_RESERVED подписку с пометкой purchasedAsGift.
       await api.giftBuySubscription(token, {
         tariffId: pickerTariff.id,
         tariffPriceOptionId: pickerOptionId ?? undefined,
-        extraDevices: pickerExtras,
       });
       await fetchData();
       fetchHistory(1);
@@ -233,16 +298,79 @@ export function ClientGiftsPage() {
     }
   };
 
-  // Цена пакета доп. устройств (та же формула что в client-tariffs).
-  const giftExtrasPrice = (pricePerExtra: number, extras: number, tiers: { minExtraDevices: number; discountPercent: number }[] | undefined, durationDays: number): number => {
-    const safe = Math.max(0, Math.floor(extras));
-    if (safe === 0 || pricePerExtra <= 0) return 0;
-    const sorted = [...(tiers ?? [])].sort((a, b) => b.minExtraDevices - a.minExtraDevices);
-    const tier = sorted.find((t) => safe >= t.minExtraDevices);
-    const pct = tier?.discountPercent ?? 0;
-    const monthly = pricePerExtra * safe * (100 - pct) / 100;
-    return Math.round(monthly * (Math.max(1, durationDays) / 30) * 100) / 100;
-  };
+  // FIX (2026-08-14): оплата провайдерами. На бэкенде нет «asGift=true» для
+  // провайдерских методов, поэтому используем asAdditional: true — это создаёт
+  // обычную доп. подписку, которую пользователь сразу же сможет превратить
+  // в подарок кнопкой «Подарить» на карточке. Семантика для юзера та же самая.
+  async function startProviderPayment(provider: "yookassa" | "cryptopay" | "heleket" | "rollypay" | "lava" | "overpay" | "yoomoney" | "platega", extra?: { plategaMethod?: number }) {
+    if (!token || !pickerTariff) return;
+    const t = pickerTariff;
+    const opts = [...(t.priceOptions ?? [])].sort((a, b) =>
+      a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.durationDays - b.durationDays
+    );
+    const selOpt = opts.find((o) => o.id === pickerOptionId) ?? opts[0] ?? null;
+    const unit = selOpt?.price ?? t.price;
+    const days = selOpt?.durationDays ?? t.durationDays;
+    const pricePerExtra = t.pricePerExtraDevice ?? 0;
+    const tiers = t.deviceDiscountTiers ?? [];
+    const extrasTotal = giftExtrasPrice(pricePerExtra, pickerExtras, tiers, days);
+    const amount = unit + extrasTotal;
+    const tariffCurrency = (t.currency ?? "RUB").toLowerCase();
+
+    setBuyError(null);
+    setBuyLoading(true);
+    try {
+      const baseBody = {
+        tariffId: t.id,
+        tariffPriceOptionId: selOpt?.id ?? undefined,
+        deviceCount: pickerExtras, // api.ts ждёт deviceCount
+        asAdditional: true,        // создаём доп. подписку → пользователь сможет подарить
+        amount,
+        currency: tariffCurrency,
+      } as Record<string, unknown>;
+
+      let res: { paymentId?: string; confirmationUrl?: string; payUrl?: string; paymentUrl?: string };
+      switch (provider) {
+        case "yookassa":
+          res = await api.yookassaCreatePayment(token, baseBody as Parameters<typeof api.yookassaCreatePayment>[1]);
+          if (res.confirmationUrl) setReadyUrl({ url: res.confirmationUrl, provider: "ЮKassa", paymentId: res.paymentId });
+          break;
+        case "cryptopay":
+          res = await api.cryptopayCreatePayment(token, baseBody as Parameters<typeof api.cryptopayCreatePayment>[1]);
+          if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Crypto Bot", paymentId: res.paymentId });
+          break;
+        case "heleket":
+          res = await api.heleketCreatePayment(token, baseBody as Parameters<typeof api.heleketCreatePayment>[1]);
+          if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Heleket", paymentId: res.paymentId });
+          break;
+        case "rollypay":
+          res = await api.rollypayCreatePayment(token, baseBody as Parameters<typeof api.rollypayCreatePayment>[1]);
+          if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "RollyPay", paymentId: res.paymentId });
+          break;
+        case "lava":
+          res = await api.lavaCreatePayment(token, baseBody as Parameters<typeof api.lavaCreatePayment>[1]);
+          if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "LAVA", paymentId: res.paymentId });
+          break;
+        case "overpay":
+          res = await api.overpayCreatePayment(token, baseBody as Parameters<typeof api.overpayCreatePayment>[1]);
+          if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Overpay", paymentId: res.paymentId });
+          break;
+        case "yoomoney":
+          res = await api.yoomoneyCreateFormPayment(token, { paymentType: "AC", ...baseBody } as Parameters<typeof api.yoomoneyCreateFormPayment>[1]);
+          if (res.paymentUrl) setReadyUrl({ url: res.paymentUrl, provider: "ЮMoney", paymentId: res.paymentId });
+          break;
+        case "platega":
+          if (!extra?.plategaMethod) throw new Error("Не выбран метод Platega");
+          res = await api.clientCreatePlategaPayment(token, { paymentMethod: extra.plategaMethod, ...baseBody } as Parameters<typeof api.clientCreatePlategaPayment>[1]);
+          if (res.paymentUrl) setReadyUrl({ url: res.paymentUrl, provider: "Platega", paymentId: res.paymentId });
+          break;
+      }
+    } catch (e) {
+      setBuyError(e instanceof Error ? e.message : "Ошибка создания платежа");
+    } finally {
+      setBuyLoading(false);
+    }
+  }
 
   const handleCreateCode = async (subscriptionId: string) => {
     if (!token) return;
@@ -329,7 +457,6 @@ export function ClientGiftsPage() {
       await fetchData();
       fetchHistory(1);
       refreshProfile().catch(() => {});
-      // Текст идентичен боту (gift:take_self) — подписка переехала в «Мои подписки».
       setActionSuccess("Подписка перенесена в «Мои подписки»! Подключите её на главной странице кабинета.");
     } catch (err) {
       toast.error("Ошибка активации", err instanceof Error ? err.message : "Не удалось активировать");
@@ -359,9 +486,167 @@ export function ClientGiftsPage() {
     );
   }
 
+  // ─── Render подсекции «Способ оплаты» для picker подарка ───
+  // Идентично client-extra-options: баланс + активные провайдеры в порядке из
+  // paymentProviders (или дефолтный порядок, если админ не настроил).
+  const renderPaymentPicker = (total: number, t: PublicTariff) => {
+    const balance = state.client?.balance ?? 0;
+    const hasBalance = balance >= total;
+    const tCurrency = (t.currency ?? "RUB").toLowerCase();
+
+    if (readyUrl) {
+      return (
+        <PayNowPanel
+          url={readyUrl.url}
+          provider={readyUrl.provider}
+          onBack={() => setReadyUrl(null)}
+          onPaid={() => {
+            const pid = readyUrl.paymentId;
+            const u = readyUrl.url, prov = readyUrl.provider;
+            setReadyUrl(null);
+            // FIX (2026-08-14): после провайдерской оплаты закрываем picker и
+            // обновляем список подписок — пользователь увидит новую доп.
+            // подписку и сможет нажать «Подарить» уже на её карточке.
+            closePicker();
+            setBuyDialogOpen(false);
+            fetchData();
+            if (pid) navigate(`/cabinet/payment-wait?id=${encodeURIComponent(pid)}`, { state: { url: u, provider: prov } });
+          }}
+          compact={isMobileOrMiniapp}
+        />
+      );
+    }
+
+    const providerLabel = (id: string, fallback: string) => paymentProviders.find((p) => p.id === id)?.label || fallback;
+
+    type ProviderEntry = { id: string; enabled: boolean; onClick: () => void; label: string; icon: "crypto" | "card" };
+    const providers: ProviderEntry[] = [
+      { id: "cryptopay", enabled: cryptopayEnabled, onClick: () => startProviderPayment("cryptopay"), label: providerLabel("cryptopay", "Crypto Bot"), icon: "crypto" },
+      { id: "heleket", enabled: heleketEnabled, onClick: () => startProviderPayment("heleket"), label: providerLabel("heleket", "Heleket"), icon: "crypto" },
+      { id: "rollypay", enabled: rollypayEnabled, onClick: () => startProviderPayment("rollypay"), label: providerLabel("rollypay", "RollyPay"), icon: "card" },
+      { id: "yookassa", enabled: yookassaEnabled && tCurrency.toUpperCase() === "RUB", onClick: () => startProviderPayment("yookassa"), label: providerLabel("yookassa", "СБП / Карты РФ"), icon: "card" },
+      { id: "yoomoney", enabled: yoomoneyEnabled && tCurrency.toUpperCase() === "RUB", onClick: () => startProviderPayment("yoomoney"), label: providerLabel("yoomoney", "ЮMoney / Карты"), icon: "card" },
+      { id: "lava", enabled: lavaEnabled && tCurrency.toUpperCase() === "RUB", onClick: () => startProviderPayment("lava"), label: providerLabel("lava", "LAVA"), icon: "card" },
+      { id: "overpay", enabled: overpayEnabled, onClick: () => startProviderPayment("overpay"), label: providerLabel("overpay", "Overpay"), icon: "card" },
+    ];
+
+    const sortedProviders = paymentProviders.length > 0
+      ? paymentProviders.map((pp) => providers.find((p) => p.id === pp.id)).filter((p): p is ProviderEntry => !!p)
+      : providers;
+
+    const colorMap: Record<string, { bg10: string; hoverBg: string; text: string }> = {
+      cryptopay: { bg10: "bg-yellow-500/10", hoverBg: "group-hover:bg-yellow-500/20", text: "text-yellow-500" },
+      heleket:   { bg10: "bg-orange-500/10", hoverBg: "group-hover:bg-orange-500/20", text: "text-orange-500" },
+      rollypay:  { bg10: "bg-sky-500/10",    hoverBg: "group-hover:bg-sky-500/20",    text: "text-sky-500" },
+      yookassa:  { bg10: "bg-green-500/10",  hoverBg: "group-hover:bg-green-500/20",  text: "text-green-500" },
+      yoomoney:  { bg10: "bg-green-500/10",  hoverBg: "group-hover:bg-green-500/20",  text: "text-green-500" },
+      lava:      { bg10: "bg-sky-500/10",    hoverBg: "group-hover:bg-sky-500/20",    text: "text-sky-500" },
+      overpay:   { bg10: "bg-indigo-500/10", hoverBg: "group-hover:bg-indigo-500/20", text: "text-indigo-500" },
+    };
+
+    const btnCls = cn(
+      "w-full",
+      isMobileOrMiniapp
+        ? "justify-start gap-4 px-6 h-16 rounded-2xl border-white/5 bg-card/40 hover:bg-card/60"
+        : "gap-3 hover:bg-background/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 rounded-xl h-14 border-border/50 group justify-center px-6 relative"
+    );
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pt-2 pb-1">
+          <Wallet className={cn("text-primary", isMobileOrMiniapp ? "h-5 w-5" : "h-4 w-4")} />
+          <span className={cn("font-bold", isMobileOrMiniapp ? "text-lg" : "text-sm")}>Способ оплаты</span>
+        </div>
+
+        {buyError && (
+          <div className={cn("p-4 bg-destructive/10 border border-destructive/20 text-destructive text-center font-bold", isMobileOrMiniapp ? "rounded-2xl text-sm" : "rounded-xl text-sm mb-4")}>
+            {buyError}
+          </div>
+        )}
+
+        {/* Оплата с баланса — сразу создаёт GIFT_RESERVED-подписку */}
+        <Button
+          size="lg"
+          onClick={handleBuy}
+          disabled={buyLoading || !hasBalance}
+          className={cn(
+            "w-full shadow-lg border-0 group relative overflow-hidden",
+            isMobileOrMiniapp
+              ? "justify-between px-6 h-16 rounded-2xl bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400"
+              : "gap-2 h-14 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+          )}
+        >
+          {!isMobileOrMiniapp && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />}
+          {isMobileOrMiniapp ? (
+            <>
+              <div className="flex items-center gap-3">
+                {buyLoading ? <Loader2 className="h-6 w-6 text-white animate-spin" /> : <Wallet className="h-6 w-6 text-white" />}
+                <span className="text-base font-bold text-white">Оплатить с баланса</span>
+              </div>
+              <span className="text-white/80 font-mono font-medium bg-black/20 px-2 py-1 rounded-lg">
+                {formatMoney(balance, tCurrency)}
+              </span>
+            </>
+          ) : (
+            <>
+              {buyLoading ? <Loader2 className="h-5 w-5 animate-spin relative z-10" /> : <Wallet className="h-5 w-5 relative z-10" />}
+              <span className="text-base font-semibold relative z-10">Оплатить с баланса</span>
+              <span className="opacity-90 font-medium ml-1 bg-black/10 px-2 py-0.5 rounded-md relative z-10">
+                ({formatMoney(balance, tCurrency)})
+              </span>
+            </>
+          )}
+        </Button>
+
+        {sortedProviders.filter((p) => p.enabled).map((p) => {
+          const c = colorMap[p.id] ?? colorMap.yookassa;
+          return (
+            <Button key={p.id} size="lg" variant="outline" onClick={p.onClick} disabled={buyLoading} className={btnCls}>
+              {isMobileOrMiniapp ? (
+                <>
+                  <div className={cn("p-2 rounded-xl", c.bg10)}>
+                    {buyLoading ? <Loader2 className={cn("h-6 w-6 animate-spin", c.text)} /> : p.icon === "crypto" ? <Zap className={cn("h-6 w-6", c.text)} /> : <CreditCard className={cn("h-6 w-6", c.text)} />}
+                  </div>
+                  <span className="text-base font-bold">{p.label}</span>
+                </>
+              ) : (
+                <>
+                  <div className={cn("absolute left-6 p-1.5 rounded-lg transition-colors", c.bg10, c.hoverBg)}>
+                    {buyLoading ? <Loader2 className={cn("h-5 w-5 animate-spin", c.text)} /> : p.icon === "crypto" ? <Zap className={cn("h-5 w-5", c.text)} /> : <CreditCard className={cn("h-5 w-5", c.text)} />}
+                  </div>
+                  <span className="text-base font-medium">{p.label}</span>
+                </>
+              )}
+            </Button>
+          );
+        })}
+
+        {plategaMethods.map((m) => (
+          <Button key={`platega-${m.id}`} size="lg" variant="outline" onClick={() => startProviderPayment("platega", { plategaMethod: m.id })} disabled={buyLoading} className={btnCls}>
+            {isMobileOrMiniapp ? (
+              <>
+                <div className="p-2 rounded-xl bg-green-500/10">
+                  {buyLoading ? <Loader2 className="h-6 w-6 animate-spin text-green-500" /> : <CreditCard className="h-6 w-6 text-green-500" />}
+                </div>
+                <span className="text-base font-bold">{m.label}</span>
+              </>
+            ) : (
+              <>
+                <div className="absolute left-6 p-1.5 rounded-lg bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+                  {buyLoading ? <Loader2 className="h-5 w-5 animate-spin text-green-500" /> : <CreditCard className="h-5 w-5 text-green-500" />}
+                </div>
+                <span className="text-base font-medium">{m.label}</span>
+              </>
+            )}
+          </Button>
+        ))}
+        {isMobileOrMiniapp && <div className="h-8" />}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8 w-full min-w-0 pb-12">
-      {/* T-unify-cabinet (30.05.2026, WolfVPN): уведомление об успешном переносе подписки себе */}
       {actionSuccess && (
         <div className="rounded-2xl bg-green-500/10 border border-green-500/30 px-4 py-3.5 flex items-start gap-3 shadow-sm">
           <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
@@ -380,7 +665,7 @@ export function ClientGiftsPage() {
       >
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-primary/20 blur-[80px] pointer-events-none -mr-20 -mt-20" />
         <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-blue-500/10 blur-[80px] pointer-events-none -ml-20 -mb-20" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="flex-1">
             <div className="flex items-center gap-4 mb-3">
@@ -415,8 +700,7 @@ export function ClientGiftsPage() {
       {/* SECTION 2: ACTION CARDS ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5 flex flex-col gap-6">
-          {/* Card 1: Redeem Code */}
-          <motion.div 
+          <motion.div
             data-tour="gifts-redeem"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -433,9 +717,9 @@ export function ClientGiftsPage() {
                 <p className="text-sm text-muted-foreground">У вас есть подарочный код?</p>
               </div>
             </div>
-            
+
             <form onSubmit={handleRedeem} className="flex flex-col gap-3 mt-auto relative z-10">
-              <Input 
+              <Input
                 value={redeemCode}
                 onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
                 placeholder="CODE-XXXX-XXXX"
@@ -464,8 +748,7 @@ export function ClientGiftsPage() {
             </form>
           </motion.div>
 
-          {/* Card 3: Stats */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
@@ -504,8 +787,7 @@ export function ClientGiftsPage() {
           </motion.div>
         </div>
 
-        {/* Card 2: History Timeline */}
-        <motion.div 
+        <motion.div
           data-tour="gifts-history"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -523,9 +805,9 @@ export function ClientGiftsPage() {
               </div>
             </div>
             {historyTotal > 4 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowFullHistory(!showFullHistory)}
                 className="rounded-xl text-primary hover:text-primary hover:bg-primary/10"
               >
@@ -534,7 +816,7 @@ export function ClientGiftsPage() {
               </Button>
             )}
           </div>
-          
+
           <div className="flex-1">
             {historyLoading && historyItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-3">
@@ -567,13 +849,13 @@ export function ClientGiftsPage() {
                           <div className={`flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-[1rem] sm:rounded-[1.25rem] bg-background shadow-inner transition-transform group-hover:scale-105 duration-300 border ${ev.color}`}>
                             {ev.icon}
                           </div>
-                          
+
                           <div className="flex-1 min-w-0 flex flex-col justify-center">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                               <span className="text-[16px] sm:text-[17px] font-bold text-foreground tracking-tight">{ev.label}</span>
                               <span className="text-[12px] font-semibold text-muted-foreground/80 bg-background/50 px-2.5 py-1 rounded-lg whitespace-nowrap self-start sm:self-auto border border-border/30">{timeAgo}</span>
                             </div>
-                            
+
                             {meta && Object.keys(meta).length > 0 && (
                               <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
                                 {meta.code && (
@@ -599,7 +881,7 @@ export function ClientGiftsPage() {
                                 )}
                               </div>
                             )}
-                            
+
                             {meta?.giftMessage && (
                               <div className="mt-3.5 relative pl-4 py-2.5 pr-3 rounded-r-2xl bg-muted/30 border border-l-0 border-border/30 text-muted-foreground/90 italic text-[13px] leading-relaxed">
                                 <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-full bg-primary/40"></div>
@@ -639,7 +921,7 @@ export function ClientGiftsPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Мои подарки</h2>
         </div>
-        
+
         {displaySubs.length === 0 ? (
           <div className="p-8 sm:p-12 rounded-3xl border border-dashed border-border/50 flex flex-col items-center justify-center text-center gap-4 bg-muted/10">
             <Package className="w-10 h-10 text-muted-foreground/40" />
@@ -698,7 +980,7 @@ export function ClientGiftsPage() {
                       </div>
                     ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
-                      <Button 
+                      <Button
                         className="rounded-xl shadow-md w-full gap-2"
                         onClick={() => handleCreateCode(sub.id)}
                         disabled={isReserved || actionLoading === `create-${sub.id}`}
@@ -706,8 +988,8 @@ export function ClientGiftsPage() {
                         {actionLoading === `create-${sub.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
                         Подарить
                       </Button>
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         className="rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border-none shadow-none w-full gap-2"
                         onClick={() => handleGetUrl(sub)}
                         disabled={!activeCode || actionLoading === `url-${sub.id}`}
@@ -715,8 +997,8 @@ export function ClientGiftsPage() {
                         {actionLoading === `url-${sub.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : copiedId === `url-${sub.id}` ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
                         Ссылка
                       </Button>
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         className="rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 font-semibold border-none shadow-none w-full gap-2"
                         onClick={() => handleActivateForSelf(sub.id)}
                         disabled={actionLoading === `activate-${sub.id}`}
@@ -754,7 +1036,7 @@ export function ClientGiftsPage() {
               {codes.map((c, i) => {
                 const isActive = c.status === "ACTIVE";
                 const isRedeemed = c.status === "REDEEMED";
-                
+
                 return (
                   <motion.div
                     key={c.id}
@@ -772,25 +1054,25 @@ export function ClientGiftsPage() {
                         <Clock className="w-3 h-3" /> {new Date(c.createdAt).toLocaleDateString("ru-RU")}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center justify-center py-4 bg-background/40 rounded-2xl border border-border/50">
                       <code className="text-[17px] sm:text-lg font-mono font-bold tracking-widest text-foreground">
                         {c.code}
                       </code>
                     </div>
-                    
+
                     {isActive && (
                       <div className="grid grid-cols-2 gap-3 mt-auto">
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
                           className="rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border-none shadow-none gap-2"
                           onClick={() => copyCode(c.code, c.id)}
                         >
                           {copiedId === `code-${c.id}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           Копировать
                         </Button>
-                        <Button 
-                          variant="destructive" 
+                        <Button
+                          variant="destructive"
                           className="rounded-xl bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground border-none shadow-none gap-2"
                           onClick={() => handleCancelCode(c.id)}
                           disabled={actionLoading === `cancel-${c.id}`}
@@ -837,7 +1119,6 @@ export function ClientGiftsPage() {
                   const opts = t.priceOptions ?? [];
                   const hasMultipleOptions = opts.length > 1;
                   const showFromPrefix = hasMultipleOptions || hasExtras;
-                  // Используем минимум из priceOptions (а не legacy t.price который может быть 0).
                   const minOptPrice = opts.length > 0 ? Math.min(...opts.map((o) => o.price)) : t.price;
                   return (
                     <div key={t.id} className="flex flex-col p-4 rounded-2xl border border-border/50 bg-background/50 hover:bg-muted/50 transition-colors">
@@ -853,10 +1134,9 @@ export function ClientGiftsPage() {
                       </div>
                       <Button
                         onClick={() => openPicker(t)}
-                        disabled={buyLoading || (client?.balance ?? 0) < minOptPrice}
                         className="w-full rounded-xl font-bold shadow-md h-11"
                       >
-                        {(client?.balance ?? 0) < minOptPrice ? "Недостаточно средств" : "Выбрать"}
+                        Выбрать
                       </Button>
                     </div>
                   );
@@ -877,7 +1157,7 @@ export function ClientGiftsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Picker длительности + доп. устройств — оформлен в стиле UnifiedPurchaseModal (без warn-модалки и pro-rata). */}
+      {/* Picker длительности + доп. устройств + способы оплаты — как в client-extra-options */}
       <Dialog open={!!pickerTariff} onOpenChange={(v) => !v && closePicker()}>
         <DialogContent className="bg-background/85 backdrop-blur-3xl border-white/10 rounded-[2rem] sm:max-w-lg w-[calc(100vw-1rem)] max-h-[92vh] overflow-y-auto overflow-x-hidden">
           {pickerTariff && (() => {
@@ -897,7 +1177,6 @@ export function ClientGiftsPage() {
             const total = unit + extrasTotal;
             const totalDevices = included + pickerExtras;
 
-            // Best-deal по длительности (минимальная цена за день)
             let bestDurationId: string | null = null;
             if (opts.length > 1) {
               let bestRatio = Infinity;
@@ -908,7 +1187,6 @@ export function ClientGiftsPage() {
               }
             }
 
-            // Плитки доп. устройств для best-per-device
             const tiles = Array.from({ length: maxExtras + 1 }, (_, i) => {
               const extras = i;
               const xtra = giftExtrasPrice(pricePerExtra, extras, tiers, days);
@@ -1086,25 +1364,10 @@ export function ClientGiftsPage() {
                       </AnimatePresence>
                     </div>
                   </section>
+
+                  {/* ── Способ оплаты — как в client-extra-options ── */}
+                  {renderPaymentPicker(total, t)}
                 </div>
-
-                {buyError && (
-                  <div className="relative p-3 rounded-xl bg-destructive/10 text-destructive text-xs text-center font-medium mt-3">
-                    {buyError}
-                  </div>
-                )}
-
-                <DialogFooter className="relative mt-4 gap-2 sm:gap-2 flex-col sm:flex-row">
-                  <Button variant="outline" onClick={closePicker} className="rounded-xl">Отмена</Button>
-                  <Button
-                    onClick={handleBuy}
-                    disabled={buyLoading || (client?.balance ?? 0) < total}
-                    className="rounded-xl gap-2 h-11 px-6 text-base font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-purple-500 hover:from-primary/90 hover:via-fuchsia-500/90 hover:to-purple-500/90 shadow-lg shadow-primary/30"
-                  >
-                    {buyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="h-4 w-4" />}
-                    {(client?.balance ?? 0) < total ? "Недостаточно средств" : `Купить за ${formatMoney(total, currency)}`}
-                  </Button>
-                </DialogFooter>
               </>
             );
           })()}

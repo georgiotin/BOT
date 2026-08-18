@@ -132,7 +132,7 @@ export async function createAdditionalSubscription(
     internalSquadUuids: string[];
     trafficResetMode?: string;
   },
-  options?: { skipConfigCheck?: boolean; extraDevices?: number; purchasedAsGift?: boolean },
+  options?: { skipConfigCheck?: boolean; extraDevices?: number; purchasedAsGift?: boolean; asAdditional?: boolean },
 ): Promise<GiftResult<{ subscriptionId: string; subscriptionIndex: number }>> {
   if (!isRemnaConfigured()) {
     return { ok: false, error: "Сервис временно недоступен", status: 503 };
@@ -156,16 +156,18 @@ export async function createAdditionalSubscription(
     return { ok: false, error: "Клиент не найден", status: 404 };
   }
 
-  // Проверяем лимит
-  const existingCount = await prisma.subscription.count({
-    where: { ownerId: rootClientId },
-  });
-  if (existingCount >= config.maxAdditionalSubscriptions) {
-    return {
-      ok: false,
-      error: `Максимум ${config.maxAdditionalSubscriptions} дополнительных подписок`,
-      status: 400,
-    };
+  // Проверяем лимит (только если это НЕ подарочная и НЕ дополнительная подписка)
+  if (!options?.purchasedAsGift && !options?.asAdditional) {
+    const existingCount = await prisma.subscription.count({
+      where: { ownerId: rootClientId },
+    });
+    if (existingCount >= config.maxAdditionalSubscriptions) {
+      return {
+        ok: false,
+        error: `Максимум ${config.maxAdditionalSubscriptions} дополнительных подписок`,
+        status: 400,
+      };
+    }
   }
 
   // subscriptionIndex (для БД) и usernameSuffix

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { UserPlus, Shield, Mail, Loader2 } from "lucide-react";
+import { UserPlus, Box, Mail, Loader2 } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { api } from "@/lib/api";
 import type { PublicConfig } from "@/lib/api";
@@ -504,7 +504,7 @@ export function ClientRegisterPage() {
             </span>
           ) : (
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shrink-0">
-              <Shield className="h-6 w-6" />
+              <Box className="h-6 w-6" />
             </span>
           )}
           {brand.serviceName ? <span className="font-semibold text-xl">{brand.serviceName}</span> : null}

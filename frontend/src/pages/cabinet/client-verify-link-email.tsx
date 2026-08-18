@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Shield, Loader2 } from "lucide-react";
+import { Mail, Box, Loader2 } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -39,7 +39,7 @@ export function ClientVerifyLinkEmailPage() {
       >
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Shield className="h-6 w-6" />
+            <Box className="h-6 w-6" />
           </span>
         </div>
         <Card className="border shadow-lg">

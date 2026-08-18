@@ -33,7 +33,7 @@ export function VideoEmbed({ block }: { block: LandingApiBlock }) {
   if (!url) {
     return (
       <section className={`container mx-auto px-4 py-12 ${SECTION_SCROLL_OFFSET}`}>
-        <div className="rounded-xl border border-dashed border-slate-300 dark:border-border bg-card dark:bg-card p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="rounded-xl border border-dashed border-white/[0.1] bg-white/[0.04] backdrop-blur-xl p-8 text-center text-sm text-zinc-400">
           Укажите URL видео в props.url (YouTube, Vimeo или прямой mp4).
         </div>
       </section>
@@ -45,12 +45,12 @@ export function VideoEmbed({ block }: { block: LandingApiBlock }) {
   return (
     <section className={`container mx-auto px-4 py-12 md:py-16 ${SECTION_SCROLL_OFFSET}`}>
       {title ? (
-        <h2 className="mb-6 text-center text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-4xl dark:text-white">
+        <h2 className="mb-6 text-center text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">
           {title}
         </h2>
       ) : null}
 
-      <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-slate-200/70 dark:border-border bg-black">
+      <div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-white/[0.1] bg-black">
         <div className="relative aspect-video">
           {isExternal ? (
             <iframe
@@ -74,7 +74,7 @@ export function VideoEmbed({ block }: { block: LandingApiBlock }) {
       </div>
 
       {caption ? (
-        <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-slate-600 dark:text-slate-400">{caption}</p>
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-zinc-400">{caption}</p>
       ) : null}
     </section>
   );

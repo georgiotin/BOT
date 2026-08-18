@@ -28,7 +28,7 @@ export function FaqAccordion({ block }: { block: LandingApiBlock }) {
   return (
     <section id="faq" className={`container mx-auto px-4 py-16 md:py-24 ${SECTION_SCROLL_OFFSET}`}>
       <div className="mx-auto max-w-3xl">
-        <h2 className="text-center text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-4xl dark:text-white">{title}</h2>
+        <h2 className="text-center text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">{title}</h2>
 
         <div className="mt-10 space-y-3">
           {items.map((item, idx) => {
@@ -36,15 +36,15 @@ export function FaqAccordion({ block }: { block: LandingApiBlock }) {
             return (
               <div
                 key={`${item.q}-${idx}`}
-                className="overflow-hidden rounded-xl border border-slate-200/70 dark:border-border bg-card dark:bg-card"
+                className="overflow-hidden rounded-xl border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl"
               >
                 <button
                   onClick={() => setOpen(isOpen ? null : idx)}
-                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-slate-50/60 dark:hover:bg-card"
+                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.08]"
                 >
-                  <span className="text-base font-semibold text-slate-950 dark:text-white md:text-lg">{item.q}</span>
+                  <span className="text-base font-semibold text-white md:text-lg">{item.q}</span>
                   <motion.span animate={{ rotate: isOpen ? 180 : 0 }} className="shrink-0">
-                    <ChevronDown className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                    <ChevronDown className="h-5 w-5 text-zinc-400" />
                   </motion.span>
                 </button>
                 <AnimatePresence initial={false}>
@@ -55,7 +55,7 @@ export function FaqAccordion({ block }: { block: LandingApiBlock }) {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.25 }}
                     >
-                      <div className="px-6 pb-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300 md:text-base">
+                      <div className="px-6 pb-5 text-sm leading-relaxed text-zinc-300 md:text-base">
                         {item.a}
                       </div>
                     </motion.div>

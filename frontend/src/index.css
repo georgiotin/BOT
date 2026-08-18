@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -57,7 +57,7 @@
 
   .dark {
     /* ═══ Тёмная тема — «Ops Dark» (Linear/Vercel-style) ═══ */
-    --background: 222 24% 6%;       /* #0B0D12 — почти чёрный сине-графит */
+    --background: 0 0% 4%;           /* #0F172A slate-950 — сливается с TG-шапкой */
     --foreground: 222 22% 92%;      /* #E6E9F0 */
     --card: 222 22% 9%;             /* #12151C — плотная поверхность */
     --card-foreground: 222 22% 92%;
@@ -86,6 +86,35 @@
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    /* T-fix-rubber-band-page (2026-08-15): rubber-band свайп вниз/вверх на уровне
+       страницы показывал синий TG-фон сверху (и снизу). StealthModal уже
+       блокирует это внутри себя через touchmove/touch-action, но на обычных
+       страницах (дашборд, подарки, тарифы) скролл доходит до края и
+       вытягивает TG-шапку снизу-вверх. overscroll-behavior:contain на html+body
+       блокирует цепочку скролла (page → TG) на уровне спецификации — без
+       вызова TG API, без telegram-viewport.ts (его правки крашили мини-апп
+       в прошлой итерации). Только страница скроллится, фон TG сверху не
+       появляется при overscroll.
+       FIX: contain вместо none — none полностью блокирует scroll chaining,
+       что ломает wheel-scroll в Telegram Desktop WebView. */
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * T-fix-page-bg (2026-08-15): глобальный body фон в dark-теме (#0F172A)
+   * просвечивал в fullscreen Telegram под padding-top: var(--app-tg-top)
+   * сверху, контрастируя с #0F172A в StealthLayout. Принудительно ставим
+   * html и body на #0F172A — сливается и с TG-шапкой, и с контентом
+   * кабинета. На карточки (.bg-card / .glass-card) правило НЕ действует —
+   * там свои --card-переменные.
+   *
+   * ВАЖНО: <html> — это корень, он НЕ может быть потомком .dark. Нужен
+   * селектор html.dark (или .dark на уровне самого html). Старый вариант
+   * `.dark html, .dark body` работал только для body — отсюда и оставалась
+   * синяя полоса сверху.
+   */
+  html.dark, html.dark body {
+    background-color: #0a0a0b;
   }
 
   /* Табличные цифры для денег/счётчиков/времени — не «прыгают». */
@@ -108,7 +137,7 @@
     background-color: hsl(var(--card)) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    border-color: hsl(var(--border));
+    border-color: var(--color-border);
   }
 
   /* Muted-зоны — плотные. */
@@ -118,12 +147,34 @@
     background-color: hsl(var(--muted)) !important;
   }
 
+  /*
+   * T-fix-card-outline (2026-08-15): в Stealth-кабинете карточки (дашборд,
+   * доп. опции, тарифы) имели видимую «чёрную обводку» — border-white/[0.07-0.09]
+   * контрастировал с #0a0a0b body, и между бордером и фоном карточки
+   * читалась тёмная граница. Юзер просил «сделай обводку одного цвета
+   * с интерфейсом» — убираем видимый бордер, оставляем только inset-тень
+   * для глубины. Используем CSS-селекторы с экранированными слешами
+   * (как Tailwind их эмитит в HTML).
+   *
+   * Покрывает все варианты border-white/[0.0X] в Stealth-кабинете.
+   * Если нужно оставить акцентную обводку (hover/saccent-500/30) —
+   * её НЕ трогаем, она остаётся яркой при наведении.
+   */
+  .dark .border-white\/\[0\.05\],
+  .dark .border-white\/\[0\.06\],
+  .dark .border-white\/\[0\.07\],
+  .dark .border-white\/\[0\.08\],
+  .dark .border-white\/\[0\.09\],
+  .dark .border-white\/\[0\.10\] {
+    border-color: rgba(255, 255, 255, 0.025) !important;
+  }
+
   /* Инпуты/селекты — плотный фон карточки, читаемая рамка. */
   select {
     appearance: none;
     -webkit-appearance: none;
     background-color: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
     color: hsl(var(--foreground));
     padding-right: 2rem;
@@ -156,7 +207,7 @@
    Плотная поверхность вместо стекла (редизайн 2026). ── */
 .glass-card {
   background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
   box-shadow: 0 1px 2px rgba(2, 6, 23, 0.04), 0 1px 3px rgba(2, 6, 23, 0.06);
 }
@@ -181,3 +232,36 @@
 html[data-tg-fullscreen="1"] .tg-fs-pad {
   padding-top: var(--app-tg-top, 0px);
 }
+
+/* T-fix-app-shell-scroll (2026-08-18): stealth-лейаут — app-shell модель.
+   #stealth-layout-root является ЕДИНСТВЕННЫМ скролл-контейнером: фиксированная
+   высота вьюпорта + overflow-y:auto. html/body при этом заблокированы
+   (overflow:hidden) из stealth-layout.tsx — документ не скроллится вовсе,
+   поэтому: (а) на Android в fullscreen TG WebView нативный жестовый слой
+   больше не конфликтует со скроллом документа; (б) на iOS rubber-band не
+   может утащить документ за край и показать нативный синий фон WebView.
+   Две декларации высоты — fallback для WebView без поддержки dvh
+   (iOS Safari < 15.4): внутри TG WebView 100vh == полной высоте окна. */
+#stealth-layout-root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 150, 150, 0.4) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 150, 0.4);
+  border-radius: 3px;
+}
+
+/* Hide bottom tabs when modal is open */
+html[data-modal-open="1"] nav.fixed.bottom-0, html[data-modal-open="1"] .fixed.bottom-0.z-20 { display: none !important; visibility: hidden !important; pointer-events: none !important; }

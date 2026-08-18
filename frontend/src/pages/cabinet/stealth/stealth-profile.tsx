@@ -19,7 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Globe, HelpCircle, Gift, CreditCard, FileText, Lock, ChevronRight,
-  Shield, LogOut, type LucideIcon,
+  Box, LogOut, type LucideIcon,
 } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { api, type PublicConfig } from "@/lib/api";
@@ -212,8 +212,8 @@ export function StealthProfile() {
 
       {/* Service info */}
       <div className="text-center text-[10px] text-zinc-600 pt-2">
-        <Shield className="h-3 w-3 inline mr-1" />
-        {(config?.serviceName ?? "STEALTHNET").toUpperCase()}
+        <Box className="h-3 w-3 inline mr-1" />
+        {(config?.serviceName ?? "AspectVPN").toUpperCase()}
       </div>
 
       <StealthPaymentsModal open={showPayments} onClose={() => setShowPayments(false)} />

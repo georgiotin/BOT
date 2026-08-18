@@ -3,13 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#0f172a" />
+    <!-- T-fix-header-color (2026-08-15): theme-color в #0a0a0b. Раньше был
+         #0a0a0b (slate-900) — TG-клиент перекрашивал шапку в синий, и она
+         контрастировала с #0a0a0b в StealthLayout. Теперь совпадает с
+         body — везде один чёрный. -->
+    <meta name="theme-color" content="#0a0a0b" />
     <meta name="description" content="Личный кабинет и админка VPN на базе Remnawave" />
     <style>
       /* T-white-flash-fix (2026-08-13): без этого браузер красит страницу в
          белый ДО загрузки CSS-бандла — на медленном интернете внутри Telegram
-         это давало заметную белую вспышку перед тёмной темой Stealth. */
-      html, body { background-color: #0B0D12; }
+         это давало заметную белую вспышку перед тёмной темой Stealth.
+         T-fix-header-color (2026-08-15): сменили с #0a0a0b на #0a0a0b —
+         TG рисует первые кадры по inline-стилю, и теперь он матчится
+         со StealthLayout + Telegram-шапкой (после setHeaderColor). */
+      html, body { background-color: #0a0a0b; }
       #root { min-height: 100vh; }
     </style>
 
@@ -20,9 +27,9 @@
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="STEALTHNET" />
+    <meta name="apple-mobile-web-app-title" content="AspectVPN" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="application-name" content="STEALTHNET" />
+    <meta name="application-name" content="AspectVPN" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +37,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&subset=latin,cyrillic"
       rel="stylesheet"
     />
-    <title>STEALTHNET</title>
+    <title>AspectVPN</title>
   </head>
   <body>
     <div id="root"></div>

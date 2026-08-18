@@ -17,8 +17,8 @@ import { getSystemConfig } from "../client/client.service.js";
 
 const DIST_PATH = process.env.FRONTEND_DIST_PATH || "/var/www/stealthnet";
 const INDEX_FILE = path.join(DIST_PATH, "index.html");
-const DEFAULT_BRAND = "STEALTHNET";
-const DEFAULT_DESC = "STEALTHNET — личный кабинет и админка VPN на базе Remnawave";
+const DEFAULT_BRAND = "AspectVPN";
+const DEFAULT_DESC = "AspectVPN — личный кабинет и админка VPN на базе Remnawave";
 const BRAND_PLACEHOLDERS = [DEFAULT_BRAND, "VPN Service"];
 
 interface CachedTemplate {

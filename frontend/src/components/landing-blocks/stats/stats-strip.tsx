@@ -36,12 +36,12 @@ export function StatsStrip({ block }: { block: LandingApiBlock }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: idx * 0.06 }}
-            className="rounded-xl border border-slate-200/60 dark:border-border bg-card dark:bg-card p-6 text-center"
+            className="rounded-xl border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl p-6 text-center"
           >
             <div className="text-4xl font-black tracking-tight md:text-5xl" style={{ color: accentTheme.primary }}>
               {s.value}
             </div>
-            <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">{s.label}</div>
+            <div className="mt-2 text-sm text-zinc-400">{s.label}</div>
           </motion.div>
         ))}
       </div>

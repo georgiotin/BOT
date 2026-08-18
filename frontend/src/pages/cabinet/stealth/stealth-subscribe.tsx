@@ -344,8 +344,8 @@ export function StealthSubscribe() {
                       {/* Чекмарк в правом верхнем углу выбранной карточки */}
                       {active && (
                         <span className={cn(
-                          "absolute top-2 right-2 h-5 w-5 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)]",
-                          isFeatured ? "bg-violet-500" : "bg-saccent-500",
+                          "absolute top-2 right-2 h-5 w-5 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.4)] overflow-hidden",
+                          isFeatured ? "bg-violet-500" : "bg-gradient-to-b from-saccent-500 via-saccent-600 to-saccent-600",
                         )}>
                           <Check className="h-3 w-3 text-white" strokeWidth={3} />
                         </span>

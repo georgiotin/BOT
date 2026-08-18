@@ -136,7 +136,7 @@ export function StealthDevicesModal({ open, onClose, onChanged }: Props) {
                       <button
                         onClick={() => remove(d.hwid)}
                         disabled={isRemoving}
-                        className="rounded-lg bg-saccent-500 hover:bg-saccent-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 transition"
+                        className="rounded-lg bg-gradient-to-b from-saccent-500 via-saccent-600 to-saccent-600 hover:from-saccent-600 hover:via-saccent-700 hover:to-saccent-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 transition overflow-hidden shadow-[0_0_20px_-4px_rgb(var(--stealth-accent)_/_0.5),inset_0_1px_0_rgba(255,255,255,0.2)]"
                       >
                         {isRemoving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Удалить"}
                       </button>

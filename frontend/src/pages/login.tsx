@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, KeyRound, Loader2 } from "lucide-react";
+import { Box, KeyRound, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ export function LoginPage() {
                 </div>
               ) : (
                 <div className="rounded-lg bg-primary/10 p-3">
-                  {pending2FA ? <KeyRound className="h-10 w-10 text-primary" /> : <Shield className="h-10 w-10 text-primary" />}
+                  {pending2FA ? <KeyRound className="h-10 w-10 text-primary" /> : <Box className="h-10 w-10 text-primary" />}
                 </div>
               )}
             </div>

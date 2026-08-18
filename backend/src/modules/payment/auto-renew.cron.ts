@@ -424,7 +424,7 @@ export async function processAutoRenewals() {
 
               // Attempt YooKassa autopayment for the shortfall only
               const orderId = randomUUID();
-              const serviceName = config.serviceName?.trim() || "STEALTHNET";
+              const serviceName = config.serviceName?.trim() || "AspectVPN";
               // добавили tg:<id> в description (см. /yookassa/create-payment).
               const tgIdSuffix = client.telegramId ? ` tg:${client.telegramId}` : "";
               const autopayResult = await createYookassaAutopayment({

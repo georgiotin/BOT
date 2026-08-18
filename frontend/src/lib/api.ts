@@ -2047,6 +2047,20 @@ export const api = {
     return request(`/client/subscription/secondary/${encodeURIComponent(id)}`, { method: "DELETE", token });
   },
 
+  /** Отменить активную подписку с возвратом остатка на баланс.
+   *  Работает для root и secondary. Возвращает сумму возврата и новый баланс. */
+  async clientCancelSubscription(
+    token: string,
+    subId: string,
+    subType: "root" | "secondary"
+  ): Promise<{ ok: boolean; refundAmount: number; newBalance: number; message?: string }> {
+    return request("/client/subscription/cancel", {
+      method: "POST",
+      body: JSON.stringify({ subscriptionId: subId, subscriptionType: subType }),
+      token,
+    });
+  },
+
   /** Список устройств (HWID) пользователя в Remna */
   async getClientDevices(token: string): Promise<{ total: number; devices: { hwid: string; platform?: string; deviceModel?: string; createdAt?: string }[] }> {
     return request("/client/devices", { token });

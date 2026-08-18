@@ -350,7 +350,7 @@ clientAuthRouter.post("/register", async (req, res) => {
     const verificationTpl = await renderEmailTemplate("email_verification", {
       verifyUrl: verificationLink,
       hours: "24",
-      serviceName: config.serviceName ?? "STEALTHNET",
+      serviceName: config.serviceName ?? "AspectVPN",
     });
     const sendResult = verificationTpl
       ? await sendEmail(smtpConfig, data.email!, verificationTpl.subject, verificationTpl.body)
@@ -657,7 +657,7 @@ clientAuthRouter.post("/forgot-password", async (req, res) => {
     const resetTpl = await renderEmailTemplate("password_reset", {
       resetUrl: resetLink,
       minutes: "60",
-      serviceName: config.serviceName ?? "STEALTHNET",
+      serviceName: config.serviceName ?? "AspectVPN",
     });
     if (resetTpl) {
       await sendEmail(smtpConfig, client.email ?? email, resetTpl.subject, resetTpl.body).catch(() => {});
@@ -1413,7 +1413,7 @@ clientRouter.post("/2fa/setup", async (req, res) => {
   if (current?.totpEnabled) return res.status(400).json({ message: "2FA уже включена" });
   const secret = generateSecret();
   const label = client.email?.trim() || `client-${client.id}`;
-  const otpauthUrl = generateURI({ issuer: "STEALTHNET", label, secret });
+  const otpauthUrl = generateURI({ issuer: "AspectVPN", label, secret });
   await prisma.client.update({
     where: { id: client.id },
     data: { totpSecret: secret, totpEnabled: false },
@@ -1947,7 +1947,7 @@ clientRouter.post("/link-email-request", async (req, res) => {
   const linkTpl = await renderEmailTemplate("link_email", {
     verifyUrl: verificationLink,
     hours: "24",
-    serviceName: config.serviceName ?? "STEALTHNET",
+    serviceName: config.serviceName ?? "AspectVPN",
   });
   const sendResult = linkTpl
     ? await sendEmail(smtpConfig, email, linkTpl.subject, linkTpl.body)
@@ -3534,6 +3534,98 @@ clientRouter.delete("/subscription/secondary/:id", async (req, res) => {
   return res.json({ success: true });
 });
 
+/**
+ * POST /api/client/subscription/cancel
+ * Клиент отменяет активную подписку с пропорциональным возвратом остатка на баланс.
+ * Работает для root и secondary. Вычисляет оставшиеся дни, считает refund,
+ * списывает в Remna (best-effort), зачисляет на баланс клиента.
+ */
+const cancelSubSchema = z.object({
+  subscriptionId: z.string().min(1).max(64),
+  subscriptionType: z.enum(["root", "secondary"]),
+});
+
+clientRouter.post("/subscription/cancel", async (req, res) => {
+  const clientId = (req as unknown as { clientId: string }).clientId;
+  const body = cancelSubSchema.safeParse(req.body);
+  if (!body.success) {
+    return res.status(400).json({ message: "Проверьте введённые данные", errors: body.error.flatten() });
+  }
+  const { subscriptionId, subscriptionType } = body.data;
+
+  const sub = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+    select: {
+      id: true,
+      ownerId: true,
+      giftedToClientId: true,
+      subscriptionIndex: true,
+      remnawaveUuid: true,
+      expireAt: true,
+      tariffId: true,
+      customPrice: true,
+      currentPricePerDay: true,
+      autoRenewEnabled: true,
+    },
+  });
+
+  if (!sub || (sub.ownerId !== clientId && sub.giftedToClientId !== clientId)) {
+    return res.status(404).json({ message: "Подписка не найдена" });
+  }
+
+  if (subscriptionType === "root" && sub.subscriptionIndex !== 0) {
+    return res.status(400).json({ message: "Тип подписки не совпадает" });
+  }
+  if (subscriptionType === "secondary" && sub.subscriptionIndex === 0) {
+    return res.status(400).json({ message: "Основная подписка отменяется как root" });
+  }
+
+  const now = new Date();
+  const expireAt = sub.expireAt ? new Date(sub.expireAt) : null;
+  const daysLeft = expireAt && expireAt > now
+    ? Math.ceil((expireAt.getTime() - now.getTime()) / 86_400_000)
+    : 0;
+
+  let refundAmount = 0;
+  if (daysLeft > 0 && sub.currentPricePerDay != null && sub.currentPricePerDay > 0) {
+    refundAmount = Math.round(sub.currentPricePerDay * daysLeft * 100) / 100;
+  } else if (daysLeft > 0 && sub.customPrice != null && sub.customPrice > 0 && expireAt) {
+    const totalDays = Math.max(1, Math.round((expireAt.getTime() - now.getTime()) / 86_400_000));
+    const pricePerDay = sub.customPrice / totalDays;
+    refundAmount = Math.round(pricePerDay * daysLeft * 100) / 100;
+  }
+
+  if (sub.remnawaveUuid && isRemnaConfigured()) {
+    try { await remnaDeleteUser(sub.remnawaveUuid); } catch { /* best effort */ }
+  }
+
+  await prisma.subscription.update({
+    where: { id: sub.id },
+    data: { autoRenewEnabled: false },
+  });
+
+  if (refundAmount > 0) {
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { balance: { increment: refundAmount } },
+    });
+  }
+
+  const clientRow = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { balance: true },
+  });
+
+  return res.json({
+    ok: true,
+    refundAmount,
+    newBalance: clientRow?.balance ?? 0,
+    message: refundAmount > 0
+      ? `Подписка отменена. Возврат ${refundAmount} ₽ на баланс.`
+      : "Подписка отменена.",
+  });
+});
+
 /** GET /api/client/devices — список устройств (HWID) пользователя в Remna */
 clientRouter.get("/devices", async (req, res) => {
   const client = (req as unknown as { client: { id: string; remnawaveUuid: string | null } }).client;
@@ -3962,7 +4054,7 @@ clientRouter.post("/payments/platega", async (req, res) => {
     return res.status(400).json({ message: "Метод оплаты недоступен" });
   }
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "AspectVPN";
   const orderId = randomUUID();
   const paymentKind = tariffIdToStore ? "tariff" : proxyTariffIdToStore ? "proxy" : singboxTariffIdToStore ? "singbox" : metadataExtra ? "option" : "topup";
   const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
@@ -4076,7 +4168,7 @@ clientRouter.post("/payments/balance", async (req, res) => {
   const parsed = payByBalanceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Проверьте введённые данные", errors: parsed.error.flatten() });
 
-  const { tariffId, tariffPriceOptionId, deviceCount, proxyTariffId, singboxTariffId, promoCode: promoCodeStr, extendsSecondarySubId, removeExtrasOnActivate, asAdditional, replaceTrialSubId } = parsed.data;
+  const { tariffId, tariffPriceOptionId, deviceCount, proxyTariffId, singboxTariffId, promoCode: promoCodeStr, extendsSecondarySubId, removeExtrasOnActivate, asAdditional, replaceTrialSubId, asGift } = parsed.data;
 
   // T-tariff-restriction (портировано из WolfVPN): запрет покупки/продления тарифа клиенту (оплата балансом).
   // Внешние платёжки покрыты бэкстопом в db.ts createPayment; здесь — явная проверка до списания.
@@ -4417,7 +4509,7 @@ clientRouter.post("/payments/balance", async (req, res) => {
         deviceDiscountTiers: tariff.deviceDiscountTiers,
         internalSquadUuids: tariff.internalSquadUuids,
         trafficResetMode: tariff.trafficResetMode ?? undefined,
-      }, { extraDevices: requestedExtras, skipConfigCheck: true });
+      }, { extraDevices: requestedExtras, skipConfigCheck: true, purchasedAsGift: asGift === true, asAdditional: asAdditional === true });
       activateResult = addResult.ok
         ? { ok: true, subscriptionId: addResult.data.subscriptionId }
         : { ok: false, error: addResult.error, status: addResult.status };
@@ -4859,7 +4951,7 @@ clientRouter.post("/yoomoney/request-topup", async (req, res) => {
   const receiver = config.yoomoneyReceiverWallet?.trim();
   if (!receiver) return res.status(503).json({ message: "ЮMoney не настроен" });
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "AspectVPN";
   const amountRounded = Math.round(amount * 100) / 100;
   const orderId = randomUUID();
   const topSnap = await paymentSnapshotTopup(client.id, amountRounded);
@@ -5144,7 +5236,7 @@ clientRouter.post("/yoomoney/create-form-payment", async (req, res) => {
     }),
   });
 
-  const serviceName = config.serviceName?.trim() || "STEALTHNET";
+  const serviceName = config.serviceName?.trim() || "AspectVPN";
   const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
   const successURL = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : "";
   const targets = tariffIdToStore
@@ -5528,7 +5620,7 @@ clientRouter.post("/yookassa/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     // T-pay-wait (портировано из WolfVPN): после оплаты ЮKassa возвращаем на страницу ожидания (polling статуса).
     const returnUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : "";
@@ -5850,7 +5942,7 @@ clientRouter.post("/cryptopay/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     // добавляем tg:<id> в description для удобного поиска
     // платежей в кабинете CryptoPay (зеркалит логику YooKassa).
     const cryptoClient = await prisma.client.findUnique({
@@ -6143,7 +6235,7 @@ clientRouter.post("/heleket/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const urlCallback = appUrl ? `${appUrl}/api/webhooks/heleket` : undefined;
     const urlSuccess = appUrl ? `${appUrl}/cabinet?heleket=success` : undefined;
@@ -6401,7 +6493,7 @@ clientRouter.post("/rollypay/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     // Адрес вебхука у RollyPay задаётся в личном кабинете кассы, в запросе его нет:
     // указать нужно {publicAppUrl}/api/webhooks/rollypay
@@ -6689,7 +6781,7 @@ clientRouter.post("/lava/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const hookUrl = appUrl ? `${appUrl}/api/webhooks/lava` : undefined;
     const successUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : undefined;
@@ -7277,7 +7369,7 @@ clientRouter.post("/overpay/create-payment", async (req, res) => {
       }),
     });
 
-    const serviceName = config.serviceName?.trim() || "STEALTHNET";
+    const serviceName = config.serviceName?.trim() || "AspectVPN";
     const appUrl = (config.publicAppUrl || "").replace(/\/$/, "");
     const returnUrl = appUrl ? `${appUrl}/cabinet/payment-wait?id=${payment.id}` : undefined;
 
@@ -7743,7 +7835,7 @@ publicConfigRouter.get("/config", async (req, res) => {
 publicConfigRouter.get("/manifest.webmanifest", async (_req, res) => {
   try {
     const cfg = (await getSystemConfig().catch(() => null)) as { serviceName?: string | null; serviceDescription?: string | null; favicon?: string | null } | null;
-    const brand = (cfg?.serviceName ?? "").trim() || "STEALTHNET";
+    const brand = (cfg?.serviceName ?? "").trim() || "AspectVPN";
     const description = (cfg?.serviceDescription ?? "").trim() || `${brand} — личный кабинет и админка VPN`;
     const favicon = (cfg?.favicon ?? "").trim() || null;
 

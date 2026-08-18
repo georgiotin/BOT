@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, User, Sparkles, Headset, ArrowLeft, MessageSquarePlus, CircleDot, CircleCheck, Inbox, Loader2, Maximize2, Minimize2, Paperclip, X as XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -318,10 +318,9 @@ function SupportTab({ headerProps, onRefreshUnread }: { headerProps: any, onRefr
   if (detailId) {
     return (
       <div className="flex flex-col flex-1 min-h-0 w-full">
+        <ChatHeader {...headerProps} />
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-y-auto min-h-0 bg-transparent scroll-smooth custom-scrollbar flex flex-col">
-          <ChatHeader {...headerProps} />
-          
+        <div className="flex-1 overflow-y-auto min-h-0 bg-transparent scroll-smooth custom-scrollbar" onTouchMove={(e) => e.stopPropagation()} style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-3 border-b border-black/5 dark:border-border bg-card shrink-0">
             <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={() => setDetailId(null)}>
@@ -458,9 +457,10 @@ function SupportTab({ headerProps, onRefreshUnread }: { headerProps: any, onRefr
   // 2. New Ticket Form
   if (showNewForm) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth custom-scrollbar">
+      <div className="flex flex-col flex-1 min-h-0 w-full">
         <ChatHeader {...headerProps} />
-        <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b border-black/5 dark:border-border bg-card shrink-0">
+        <div className="flex-1 overflow-y-auto min-h-0 scroll-smooth custom-scrollbar" onTouchMove={(e) => e.stopPropagation()} style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 border-b border-black/5 dark:border-border bg-card shrink-0">
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full -ml-2" onClick={() => setShowNewForm(false)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -543,15 +543,17 @@ function SupportTab({ headerProps, onRefreshUnread }: { headerProps: any, onRefr
             Отправить
           </Button>
         </div>
+        </div>
       </div>
     );
   }
 
   // 3. List of Tickets
   return (
-    <div className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col flex-1 min-h-0 w-full">
       <ChatHeader {...headerProps} />
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 shrink-0 border-b border-black/5 dark:border-border bg-card">
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar" onTouchMove={(e) => e.stopPropagation()} style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 shrink-0 border-b border-black/5 dark:border-border bg-card">
         <h3 className="text-sm font-bold text-foreground">Мои обращения</h3>
         <Button 
           variant="outline" 
@@ -600,6 +602,7 @@ function SupportTab({ headerProps, onRefreshUnread }: { headerProps: any, onRefr
             );
           })
         )}
+      </div>
       </div>
     </div>
   );
@@ -682,17 +685,17 @@ export function FloatingChat() {
     return () => observer.disconnect();
   }, []);
 
-  // Блокировка скролла body при открытом чате только на мобилках
   useEffect(() => {
-    const isMobile = window.innerWidth < 640;
-    if (isOpen && isMobile) {
-      document.body.style.overflow = 'hidden';
+    if (isOpen) {
+      document.documentElement.style.overscrollBehaviorY = 'contain';
+      document.body.style.overscrollBehaviorY = 'contain';
     } else {
-      document.body.style.overflow = '';
+      document.documentElement.style.overscrollBehaviorY = '';
+      document.body.style.overscrollBehaviorY = '';
     }
-    
     return () => {
-      document.body.style.overflow = '';
+      document.documentElement.style.overscrollBehaviorY = '';
+      document.body.style.overscrollBehaviorY = '';
     };
   }, [isOpen]);
 
@@ -786,18 +789,19 @@ export function FloatingChat() {
                   : "sm:w-[450px] sm:h-[650px] sm:max-h-[85vh]",
                 "sm:rounded-xl border-0 sm:border border-border",
                 "bg-card sm:bg-card sm:shadow-2xl sm:shadow-black/50",
-                "flex flex-col overflow-hidden transition-all duration-500 ease-in-out"
+                "flex flex-col overflow-visible sm:overflow-hidden transition-all duration-500 ease-in-out"
               )}
             >
               {activeChat === "ai" && aiChatEnabled ? (
                 <div className="flex flex-col flex-1 min-h-0 w-full">
+                  <ChatHeader {...headerProps} />
                   {/* AI Messages */}
                   <div 
-                    className="flex-1 overflow-y-auto min-h-0 bg-transparent scroll-smooth custom-scrollbar flex flex-col relative"
+                    className="flex-1 overflow-y-auto min-h-0 bg-transparent scroll-smooth custom-scrollbar relative"
                     onScroll={handleScroll}
+                    onTouchMove={(e) => e.stopPropagation()}
+                    style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}
                   >
-                    <ChatHeader {...headerProps} />
-                    
                     {/* Floating Switcher */}
                     <div className="sticky top-4 z-30 flex justify-center pointer-events-none px-4 w-full h-0 overflow-visible">
                       <AnimatePresence>
@@ -815,7 +819,7 @@ export function FloatingChat() {
                       </AnimatePresence>
                     </div>
 
-                    <div className="p-4 space-y-4 flex-1">
+                    <div className="p-4 space-y-4">
                       <AnimatePresence mode="popLayout">
                         {aiChats.map((msg) => {
                           const isUser = msg.from === "user";
@@ -942,7 +946,7 @@ export function FloatingChat() {
                   initial={{ scale: 0, y: 10 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-destructive text-[11px] font-bold text-white"
+                  className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-destructive text-[10px] font-bold text-white"
                 >
                   {aiUnread + supportUnread}
                 </motion.span>

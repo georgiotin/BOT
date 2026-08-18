@@ -24,14 +24,14 @@ export function LandingHeader({ serviceName, logoUrl, navItems, loginText, ctaTe
   const accentBg = `linear-gradient(135deg, ${accentTheme.primary}, ${accentTheme.tertiary})`;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/60 dark:border-border bg-card dark:bg-slate-950/70">
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0a0a0b]/95 backdrop-blur-xl">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-3">
           {logoUrl ? (
             <img src={logoUrl} alt={serviceName} className="h-9 w-9 rounded-xl object-contain" />
           ) : (
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-black text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-base font-black text-white shadow-lg"
               style={{ background: accentBg }}
             >
               {serviceName.slice(0, 1).toUpperCase()}
@@ -43,23 +43,23 @@ export function LandingHeader({ serviceName, logoUrl, navItems, loginText, ctaTe
                 {headerBadge}
               </div>
             ) : null}
-            <div className="text-base font-black tracking-tight text-slate-950 dark:text-white">{serviceName}</div>
+            <div className="text-base font-black tracking-tight text-white">{serviceName}</div>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300 md:flex">
+        <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-400 md:flex">
           {navItems.map((it) => (
-            <a key={it.href} href={it.href} className="transition-colors hover:text-slate-950 dark:hover:text-white">
+            <a key={it.href} href={it.href} className="transition-colors hover:text-white">
               {it.label}
             </a>
           ))}
         </nav>
 
         <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
-          <Button asChild variant="ghost" className="h-9 rounded-full px-4 text-sm font-medium">
+          <Button asChild variant="ghost" className="h-9 rounded-full px-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08]">
             <Link to={buildLink("/cabinet/login")}>{loginText}</Link>
           </Button>
-          <Button asChild className="h-9 rounded-full px-4 text-sm font-semibold text-white" style={{ background: accentBg }}>
+          <Button asChild className="h-9 rounded-full px-4 text-sm font-semibold text-white shadow-lg" style={{ background: accentBg }}>
             <Link to={buildLink("/cabinet/register")}>
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
               {ctaText}

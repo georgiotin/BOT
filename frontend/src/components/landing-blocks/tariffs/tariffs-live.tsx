@@ -39,21 +39,21 @@ export function TariffsLive({ block }: TariffsLiveProps) {
   return (
     <section id="tariffs" className={`container mx-auto px-4 py-16 md:py-24 ${SECTION_SCROLL_OFFSET}`}>
       <div className="text-center">
-        <h2 className="text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-5xl dark:text-white">{title}</h2>
-        {subtitle ? <p className="mx-auto mt-4 max-w-2xl text-base text-slate-600 dark:text-slate-300 md:text-lg">{subtitle}</p> : null}
+        <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-5xl">{title}</h2>
+        {subtitle ? <p className="mx-auto mt-4 max-w-2xl text-base text-zinc-300 md:text-lg">{subtitle}</p> : null}
       </div>
 
       {loading ? (
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-64 animate-pulse rounded-xl border border-slate-200/70 dark:border-border bg-card dark:bg-card" />
+            <div key={i} className="h-64 animate-pulse rounded-xl border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl" />
           ))}
         </div>
       ) : categories && categories.length > 0 ? (
         <div className="mt-12 space-y-12">
           {categories.map((cat) => (
             <div key={cat.id}>
-              {cat.name ? <h3 className="mb-5 text-xl font-bold text-slate-950 dark:text-white">{cat.name}</h3> : null}
+              {cat.name ? <h3 className="mb-5 text-xl font-bold text-white">{cat.name}</h3> : null}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {cat.tariffs.map((t, idx) => (
                   <motion.div
@@ -63,21 +63,21 @@ export function TariffsLive({ block }: TariffsLiveProps) {
                     viewport={{ once: true }}
                     transition={{ duration: 0.35, delay: idx * 0.04 }}
                   >
-                    <Card className="h-full border-slate-200/70 dark:border-border bg-card dark:bg-card">
+                    <Card className="h-full border-white/[0.1] bg-white/[0.04] backdrop-blur-xl">
                       <CardContent className="flex h-full flex-col p-6">
-                        <h4 className="text-lg font-bold text-slate-950 dark:text-white">{t.name}</h4>
+                        <h4 className="text-lg font-bold text-white">{t.name}</h4>
                         {t.description ? (
-                          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t.description}</p>
+                          <p className="mt-2 text-sm text-zinc-300">{t.description}</p>
                         ) : null}
 
                         <div className="mt-5 flex items-baseline gap-1">
                           <span className="text-4xl font-black tracking-tight" style={{ color: accentTheme.primary }}>
                             {t.price}
                           </span>
-                          <span className="text-sm text-slate-500 dark:text-slate-400">{t.currency.toUpperCase()}</span>
+                          <span className="text-sm text-zinc-400">{t.currency.toUpperCase()}</span>
                         </div>
 
-                        <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                        <ul className="mt-5 flex-1 space-y-2 text-sm text-zinc-200">
                           {t.durationDays ? (
                             <li className="flex items-center gap-2">
                               <Check className="h-4 w-4" style={{ color: accentTheme.primary }} />
@@ -103,7 +103,7 @@ export function TariffsLive({ block }: TariffsLiveProps) {
                           )}
                         </ul>
 
-                        <Button asChild className="group mt-6 h-9 rounded-full font-semibold text-white" style={{ background: accentBg }}>
+                        <Button asChild className="group mt-6 h-9 rounded-full font-semibold text-white shadow-lg" style={{ background: accentBg }}>
                           <Link to={buildLink("/cabinet/register")} className="flex items-center justify-center gap-2">
                             {buttonChooseTariff}
                             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -118,8 +118,8 @@ export function TariffsLive({ block }: TariffsLiveProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-10 rounded-xl border border-dashed border-slate-300 dark:border-border bg-card dark:bg-card px-8 py-16 text-center">
-          <p className="text-base text-slate-600 dark:text-slate-300">{noTariffsMessage}</p>
+        <div className="mt-10 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.04] backdrop-blur-xl px-8 py-16 text-center">
+          <p className="text-base text-zinc-300">{noTariffsMessage}</p>
         </div>
       )}
     </section>

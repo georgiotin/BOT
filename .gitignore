@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Builds
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local icon source originals
+backend/Airbrush-*.jpg

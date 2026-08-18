@@ -35,6 +35,7 @@ import {
   Coins,
   Percent,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { useCabinetConfig } from "@/contexts/cabinet-config";
@@ -46,7 +47,7 @@ import { TrialsPickerDialog } from "@/components/cabinet/trials-picker-dialog";
 import { ExtendSubscriptionDialog } from "@/components/payment/extend-subscription-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -263,6 +264,27 @@ function ClassicDashboardPage() {
   // несколько раз подряд, применяем только ОТВЕТ САМОГО ПОСЛЕДНЕГО запроса (защита от
   // «состояния гонки», когда старый ответ прилетает позже нового и откатывает тоггл назад).
   const autoRenewReqSeq = useRef<Record<string, number>>({});
+
+  // --- Отмена подписки с возвратом ---
+  const [cancelSubId, setCancelSubId] = useState<string | null>(null);
+  const [cancelSubType, setCancelSubType] = useState<"root" | "secondary">("root");
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  async function doCancelSubscription() {
+    if (!token || !cancelSubId) return;
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      await api.clientCancelSubscription(token, cancelSubId, cancelSubType);
+      setCancelSubId(null);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setCancelError(e instanceof Error ? e.message : "Ошибка отмены подписки");
+    } finally {
+      setCancelLoading(false);
+    }
+  }
 
   const token = state.token;
   const isMiniapp = useCabinetMiniapp();
@@ -864,8 +886,8 @@ function ClassicDashboardPage() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="pt-1">
-                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground border-0" asChild>
+                  <div className="pt-1 flex gap-2">
+                    <Button className="flex-1 gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform duration-300 [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground border-0" asChild>
                       {useRemnaPage && vpnUrl ? (
                         <a href={vpnUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
                           <Wifi className="h-5 w-5 shrink-0" />
@@ -880,6 +902,18 @@ function ClassicDashboardPage() {
                     </Button>
                   </div>
                 </>
+              )}
+              {rootSubId && !rootTrial.isTrial && (
+                <div className="pt-1">
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors gap-2"
+                    onClick={() => { setCancelSubId(rootSubId); setCancelSubType("root"); setCancelError(null); }}
+                  >
+                    <Trash2 className="h-5 w-5" />
+                    <span>Отменить подписку</span>
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -1011,6 +1045,15 @@ function ClassicDashboardPage() {
                       </Link>
                     )}
                   </Button>
+                  {(
+                    <Button
+                      variant="outline"
+                      className="shrink-0 h-12 w-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      onClick={() => { setCancelSubId(sec.id); setCancelSubType("secondary"); setCancelError(null); }}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </section>
@@ -1323,20 +1366,34 @@ function ClassicDashboardPage() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Button className="w-full gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground border-0" asChild>
-                      {useRemnaPage && vpnUrl ? (
-                        <a href={vpnUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
-                          <Wifi className="h-5 w-5 shrink-0" />
-                          <span className="inline-flex items-center leading-none">Подключиться</span>
-                        </a>
-                      ) : (
-                        <Link to="/cabinet/subscribe" className="inline-flex w-full items-center justify-center gap-2">
-                          <Wifi className="h-5 w-5 shrink-0" />
-                          <span className="inline-flex items-center leading-none">Подключиться</span>
-                        </Link>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button className="flex-1 gap-2 shadow-lg h-12 rounded-xl text-md hover:scale-[1.02] transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary text-primary-foreground border-0" asChild>
+                        {useRemnaPage && vpnUrl ? (
+                          <a href={vpnUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center gap-2">
+                            <Wifi className="h-5 w-5 shrink-0" />
+                            <span className="inline-flex items-center leading-none">Подключиться</span>
+                          </a>
+                        ) : (
+                          <Link to="/cabinet/subscribe" className="inline-flex w-full items-center justify-center gap-2">
+                            <Wifi className="h-5 w-5 shrink-0" />
+                            <span className="inline-flex items-center leading-none">Подключиться</span>
+                          </Link>
+                        )}
+                      </Button>
+                    </div>
                   </>
+                )}
+                {rootSubId && !rootTrial.isTrial && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full h-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors gap-2"
+                      onClick={() => { setCancelSubId(rootSubId); setCancelSubType("root"); setCancelError(null); }}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                      <span>Отменить подписку</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -1661,8 +1718,8 @@ function ClassicDashboardPage() {
                           </Button>
                         </div>
                       )}
-                      <div className="pt-2 flex flex-col gap-2">
-                        <Button variant="default" size="lg" className="w-full gap-2 rounded-xl shadow-lg h-14 text-[16px] hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
+                      <div className="pt-2 flex flex-row gap-2">
+                        <Button variant="default" size="lg" className="flex-1 gap-2 rounded-xl shadow-lg h-14 text-[16px] hover:scale-105 transition-transform [&_svg]:self-center [&_span]:leading-none bg-primary hover:bg-primary/90 text-primary-foreground" asChild>
                           {useRemnaPage && secParsed.subscriptionUrl ? (
                             <a href={secParsed.subscriptionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 leading-none">
                               <Wifi className="h-5 w-5 shrink-0" />
@@ -1674,6 +1731,14 @@ function ClassicDashboardPage() {
                               <span className="inline-flex items-center leading-none">Подключиться</span>
                             </Link>
                           )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="shrink-0 h-14 w-14 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          onClick={() => { setCancelSubId(sec.id); setCancelSubType("secondary"); setCancelError(null); }}
+                        >
+                          <Trash2 className="h-5 w-5" />
                         </Button>
                       </div>
 
@@ -1689,6 +1754,61 @@ function ClassicDashboardPage() {
     {trialsPickerNode}
     {paySuccessModalNode}
     {extendDialogNode}
+
+    {/* Диалог подтверждения отмены подписки с возвратом */}
+    <Dialog open={!!cancelSubId} onOpenChange={(open) => { if (!open && !cancelLoading) setCancelSubId(null); }}>
+      <DialogContent className="w-full max-w-md mx-auto sm:rounded-3xl p-5 sm:p-6 border border-border/50 bg-card/60 backdrop-blur-3xl shadow-2xl" showCloseButton={!cancelLoading}>
+        <DialogHeader className="mb-4 text-center sm:text-left">
+          <DialogTitle className="text-xl font-bold flex items-center justify-center sm:justify-start gap-2">
+            <div className="p-2 bg-destructive/10 rounded-xl">
+              <Trash2 className="h-6 w-6 text-destructive" />
+            </div>
+            Отменить подписку?
+          </DialogTitle>
+          <DialogDescription className="hidden" />
+        </DialogHeader>
+        {(() => {
+          const isRoot = cancelSubType === "root";
+          const subLabel = isRoot
+            ? ((tariffDisplayName ?? (subscription && typeof subscription === "object" ? parseSubscription(subscription).productName : null))?.trim() || "Основная подписка")
+            : (secondarySubscriptions.find((s) => s.id === cancelSubId)?.tariffDisplayName || `Подписка #${cancelSubId}`);
+          const expireAt = isRoot
+            ? (subscription && typeof subscription === "object" ? parseSubscription(subscription).expireAt : null)
+            : (() => { const s = secondarySubscriptions.find((sc) => sc.id === cancelSubId); return s ? parseSubscription(s.subscription).expireAt : null; })();
+          const daysLeft = expireAt ? Math.max(0, Math.round((new Date(expireAt).getTime() - Date.now()) / 86_400_000)) : 0;
+          return (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border/50 bg-background/50 p-4 space-y-2">
+                <p className="text-sm text-muted-foreground">Подписка: <span className="font-bold text-foreground">{subLabel}</span></p>
+                <p className="text-sm text-muted-foreground">Осталось дней: <span className="font-bold text-foreground">{daysLeft}</span></p>
+                {daysLeft > 0 && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Остаток средств будет возвращён на баланс пропорционально оставшимся дням.
+                  </p>
+                )}
+              </div>
+              {cancelError && (
+                <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive text-center">
+                  {cancelError}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground text-center">
+                Подписка будет немедленно отключена. Это действие необратимо.
+              </p>
+            </div>
+          );
+        })()}
+        <DialogFooter className="mt-4 sm:justify-center gap-2 border-t border-border/50 pt-4">
+          <Button variant="ghost" onClick={() => setCancelSubId(null)} disabled={cancelLoading} className="rounded-xl hover:bg-background/50 text-muted-foreground">
+            Отмена
+          </Button>
+          <Button variant="destructive" onClick={doCancelSubscription} disabled={cancelLoading} className="rounded-xl gap-2">
+            {cancelLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {cancelLoading ? "Отменяем…" : "Отменить подписку"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

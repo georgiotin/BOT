@@ -321,7 +321,7 @@ export type BotMenuTexts = {
 };
 
 const DEFAULT_BOT_MENU_TEXTS: Required<BotMenuTexts> = {
-  welcomeTitlePrefix: "🛡 ",
+  welcomeTitlePrefix: "📦 ",
   welcomeGreeting: "👋 Добро пожаловать в ",
   balancePrefix: "💰 Ваш Баланс: ",
   tariffPrefix: "💎 Ваш тариф : ",
@@ -608,7 +608,7 @@ async function loadSystemConfigFromDb() {
     trialSquadUuid: map.trial_squad_uuid || null,
     trialDeviceLimit: map.trial_device_limit != null && map.trial_device_limit !== "" ? parseInt(map.trial_device_limit, 10) : null,
     trialTrafficLimitBytes: map.trial_traffic_limit != null && map.trial_traffic_limit !== "" ? parseInt(map.trial_traffic_limit, 10) : null,
-    serviceName: map.service_name || "STEALTHNET",
+    serviceName: map.service_name || "AspectVPN",
     serviceDescription: map.service_description || null,
     logo: map.logo || null,
     logoBot: map.logo_bot || null,
@@ -824,7 +824,7 @@ async function loadSystemConfigFromDb() {
       try { return JSON.parse(map.video_instructions || "[]") as { id: string; title: string; telegramFileId: string; sortOrder: number }[]; } catch { return []; }
     })(),
     ticketsEnabled: map.tickets_enabled === "true" || map.tickets_enabled === "1",
-    themeAccent: (map.theme_accent ?? "").trim() || "default",
+    themeAccent: (map.theme_accent ?? "").trim() || "red",
     allowUserThemeChange: map.allow_user_theme_change === "true" || map.allow_user_theme_change === "1" || map.allow_user_theme_change == null,
     forceSubscribeEnabled: map.force_subscribe_enabled === "true" || map.force_subscribe_enabled === "1",
     forceSubscribeChannelId: (map.force_subscribe_channel_id ?? "").trim() || null,
@@ -1214,7 +1214,7 @@ export async function getPublicConfig(_forCloneBot?: { markupPercent?: number | 
     STATUS_INACTIVE: "🔴",
     STATUS_LIMITED: "🟡",
     STATUS_DISABLED: "🔴",
-    HEADER: "🛡",
+    HEADER: "📦",
     MAIN_MENU: "👋",
     BALANCE: "💰",
     TARIFFS: "💎",

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * STEALTHNET 4.2.0 — Telegram-бот
  * Полный функционал кабинета: главная, тарифы, профиль, пополнение, триал, реферальная ссылка, VPN.
  * Цветные кнопки: style primary / success / danger (Telegram Bot API).
@@ -564,7 +564,7 @@ const DEFAULT_MENU_TEXTS: Record<string, string> = {
   // маркетинговый welcome — весь текст в одной мульти-строке.
   // Остальные строки (welcomeTitlePrefix, balance/tariff/status/expire/...) скрыты по
   // умолчанию через DEFAULT_MENU_LINE_VISIBILITY — админ-конфиг может их вернуть точечно.
-  welcomeTitlePrefix: "🛡 ",
+  welcomeTitlePrefix: "📦 ",
   welcomeGreeting: [
     "🌐 Большой выбор локаций",
     "🎥 YouTube на высокой скорости без рекламы",
@@ -1143,7 +1143,8 @@ function buildMainMenuText(opts: {
 
   // Блок «список подписок» — все root + secondary активные/полученные в подарок
   // (как в «Мои подписки»), сразу после шапки.
-  if (allSubs !== undefined) {
+  // Блок «список подписок» отключён по запросу.
+  if (false as boolean) {
     // pushRaw тоже идёт через applyMarkdownAndEmoji — поддерживает **bold**
     // (количество подписок, дни) и {{KEY}} placeholders.
     const pushRaw = (text: string) => {
@@ -2196,7 +2197,7 @@ composer.command("referral", async (ctx) => {
     // Ссылку В САМ ТЕКСТ НЕ кладём — она уже идёт через параметр `url=` и
     // выводится TG-клиентом ПЕРВОЙ строкой автоматически. Если продублировать
     // в shareText — получим две одинаковых ссылки подряд (баг юзера 14.05).
-    const shareText = `\n🛡 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.`;
+    const shareText = `\n📦 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(linkBot)}&text=${encodeURIComponent(shareText)}`;
     const rows: ({ text: string; url: string } | { text: string; callback_data: string })[][] = [];
     rows.push([{ text: "📢 Поделиться ссылкой", url: shareUrl }]);
@@ -6525,7 +6526,7 @@ if (data.startsWith("topup_rollypay:")) {
       // текст шаринга редактируется в админке («Тексты бота» → bot_referral_share_text).
       // Ведущий \n обязателен: ссылка из `url=` рисуется TG-клиентом первой строкой.
       const shareBody = (config?.botReferralShareText ?? "").trim()
-        || "🛡 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.";
+        || "📦 Надёжный VPN, который реально работает!\n\nРаботает там, где другие не справляются.\n\n💡 Нажми на ссылку выше, чтобы подключиться.";
       const shareText = `\n${shareBody}`;
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(linkBot)}&text=${encodeURIComponent(shareText)}`;
       const rows: ({ text: string; url: string } | { text: string; callback_data: string })[][] = [];
@@ -7712,7 +7713,7 @@ if (data.startsWith("topup_rollypay:")) {
         // Ссылка автоматически идёт как preview-карточка сверху. Это нативное поведение TG,
         // изменить порядок невозможно через стандартное share API.
         // новый текст для шеринга подарочной подписки.
-        const shareText = `У меня для тебя подарок 🎁\n \nПодписка на сервис безопасного удалённого доступа 🛡 \n\n💡 Нажми на ссылку, чтобы активировать:\n\n${giftUrl}`;
+        const shareText = `У меня для тебя подарок 🎁\n \nПодписка на сервис безопасного удалённого доступа 📦 \n\n💡 Нажми на ссылку, чтобы активировать:\n\n${giftUrl}`;
         const shareUrl = giftUrl ? `https://t.me/share/url?url=${encodeURIComponent(giftUrl)}&text=${encodeURIComponent(shareText)}` : "";
         const buttons: (({ text: string; callback_data: string } | { text: string; url: string })[])[] = [];
         if (shareUrl) buttons.push([{ text: "📤 Поделиться в Telegram", url: shareUrl }]);
@@ -7773,7 +7774,7 @@ if (data.startsWith("topup_rollypay:")) {
         // `?url=` обязателен — иначе share не работает на части клиентов.
         // URL всегда идёт превью сверху (нативное поведение TG, не меняется через standard share API).
         // новый текст для шеринга подарочной подписки.
-        const shareText = `У меня для тебя подарок 🎁\n \nПодписка на сервис безопасного удалённого доступа 🛡 \n\n💡 Нажми на ссылку, чтобы активировать:\n\n${giftUrl}`;
+        const shareText = `У меня для тебя подарок 🎁\n \nПодписка на сервис безопасного удалённого доступа 📦 \n\n💡 Нажми на ссылку, чтобы активировать:\n\n${giftUrl}`;
         const shareUrl = giftUrl
           ? `https://t.me/share/url?url=${encodeURIComponent(giftUrl)}&text=${encodeURIComponent(shareText)}`
           : "";

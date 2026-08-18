@@ -24,8 +24,8 @@ export function CustomJourney({ block }: { block: LandingApiBlock }) {
   return (
     <section className={`container mx-auto px-4 py-12 md:py-16 ${SECTION_SCROLL_OFFSET}`}>
       <div className="text-center">
-        <h2 className="text-3xl font-black tracking-[-0.04em] text-slate-950 md:text-4xl dark:text-white">{title}</h2>
-        {desc ? <p className="mx-auto mt-3 max-w-xl text-base text-slate-600 dark:text-slate-300">{desc}</p> : null}
+        <h2 className="text-3xl font-black tracking-[-0.04em] text-white md:text-4xl">{title}</h2>
+        {desc ? <p className="mx-auto mt-3 max-w-xl text-base text-zinc-300">{desc}</p> : null}
       </div>
 
       <div className="mx-auto mt-10 grid max-w-5xl gap-4 md:grid-cols-3">
@@ -38,7 +38,7 @@ export function CustomJourney({ block }: { block: LandingApiBlock }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: idx * 0.08 }}
-              className="rounded-xl border border-slate-200/70 dark:border-border bg-card dark:bg-card p-6"
+              className="rounded-xl border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl p-6"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${accentTheme.primary}18`, color: accentTheme.primary }}>
@@ -48,8 +48,8 @@ export function CustomJourney({ block }: { block: LandingApiBlock }) {
                   0{idx + 1}
                 </div>
               </div>
-              <h3 className="mt-5 text-lg font-bold text-slate-950 dark:text-white">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{step.desc}</p>
+              <h3 className="mt-5 text-lg font-bold text-white">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-300">{step.desc}</p>
             </motion.div>
           );
         })}

@@ -121,7 +121,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "email", example: "user@example.com", required: true },
       { name: "loginUrl", example: "https://stealthnet.app/login", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Добро пожаловать в {{serviceName}}!",
     defaultBody: layout({
@@ -139,7 +139,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "verifyUrl", example: "https://stealthnet.app/cabinet/verify-email?token=...", required: true },
       { name: "hours", example: "24", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Подтверждение регистрации — {{serviceName}}",
     defaultBody: layout({
@@ -157,7 +157,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "verifyUrl", example: "https://stealthnet.app/cabinet/verify-link-email?token=...", required: true },
       { name: "hours", example: "24", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Привязка почты к аккаунту — {{serviceName}}",
     defaultBody: layout({
@@ -175,7 +175,7 @@ export const TEMPLATES: TemplateDef[] = [
     variables: [
       { name: "resetUrl", example: "https://stealthnet.app/reset?token=...", required: true },
       { name: "minutes", example: "60", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Сброс пароля — {{serviceName}}",
     defaultBody: layout({
@@ -195,7 +195,7 @@ export const TEMPLATES: TemplateDef[] = [
       { name: "currency", example: "USD", required: true },
       { name: "tariffName", example: "1 месяц", required: true },
       { name: "expiresAt", example: "2026-06-05", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Оплата подтверждена — {{serviceName}}",
     defaultBody: layout({
@@ -217,7 +217,7 @@ export const TEMPLATES: TemplateDef[] = [
       { name: "tariffName", example: "1 месяц", required: true },
       { name: "daysLeft", example: "3", required: true },
       { name: "renewUrl", example: "https://stealthnet.app/renew", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Подписка истекает через {{daysLeft}} дн. — {{serviceName}}",
     defaultBody: layout({
@@ -233,7 +233,7 @@ export const TEMPLATES: TemplateDef[] = [
     description: "В день истечения",
     variables: [
       { name: "tariffName", example: "1 месяц", required: true },
-      { name: "serviceName", example: "STEALTHNET" },
+      { name: "serviceName", example: "AspectVPN" },
     ],
     defaultSubject: "Подписка истекла — {{serviceName}}",
     defaultBody: layout({

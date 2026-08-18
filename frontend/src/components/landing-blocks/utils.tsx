@@ -13,7 +13,7 @@ interface LandingAccentTheme {
 }
 
 const LANDING_ACCENT_THEMES: Record<ThemeAccent, LandingAccentTheme> = {
-  default: { primary: "#10b981", secondary: "#06b6d4", tertiary: "#38bdf8" },
+  default: { primary: "#dc2626", secondary: "#a1a1aa", tertiary: "#ef4444" },
   blue: { primary: "#3b82f6", secondary: "#06b6d4", tertiary: "#60a5fa" },
   violet: { primary: "#8b5cf6", secondary: "#6366f1", tertiary: "#a78bfa" },
   rose: { primary: "#f43f5e", secondary: "#fb7185", tertiary: "#fda4af" },
@@ -22,7 +22,7 @@ const LANDING_ACCENT_THEMES: Record<ThemeAccent, LandingAccentTheme> = {
   emerald: { primary: "#10b981", secondary: "#14b8a6", tertiary: "#2dd4bf" },
   cyan: { primary: "#06b6d4", secondary: "#0ea5e9", tertiary: "#67e8f9" },
   amber: { primary: "#f59e0b", secondary: "#f97316", tertiary: "#fcd34d" },
-  red: { primary: "#3b82f6", secondary: "#f97316", tertiary: "#fca5a5" },
+  red: { primary: "#dc2626", secondary: "#a1a1aa", tertiary: "#ef4444" },
   pink: { primary: "#ec4899", secondary: "#f43f5e", tertiary: "#f9a8d4" },
   indigo: { primary: "#6366f1", secondary: "#8b5cf6", tertiary: "#a5b4fc" },
 };

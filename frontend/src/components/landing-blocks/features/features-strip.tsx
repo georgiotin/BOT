@@ -41,7 +41,7 @@ export function FeaturesStrip({ block }: { block: LandingApiBlock }) {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: idx * 0.05 }}
             >
-              <Card className="h-full border-slate-200/70 dark:border-border bg-card dark:bg-card transition-shadow">
+              <Card className="h-full border-white/[0.1] bg-white/[0.04] backdrop-blur-xl transition-shadow">
                 <CardContent className="p-5">
                   <div
                     className="flex h-10 w-10 items-center justify-center rounded-xl"
@@ -49,8 +49,8 @@ export function FeaturesStrip({ block }: { block: LandingApiBlock }) {
                   >
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 text-base font-bold text-slate-950 dark:text-white">{item.label}</h3>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.sub}</p>
+                  <h3 className="mt-4 text-base font-bold text-white">{item.label}</h3>
+                  <p className="mt-1 text-sm text-zinc-300">{item.sub}</p>
                 </CardContent>
               </Card>
             </motion.div>

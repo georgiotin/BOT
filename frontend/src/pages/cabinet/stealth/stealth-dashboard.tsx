@@ -9,15 +9,22 @@
  *      (/cabinet/subscribe?sub=id).
  *   3. Общие действия: установка VPN, промокоды, устройства, рефералка.
  *   4. Если подписок нет — hero + большая красная Buy CTA.
+ *
+ * T-fix-android-icons (rev.2, 2026-08-15): lucide h-4 w-4 без цвета на Android
+ * WebView Telegram рендерились как кляксы. Подняли до h-5 w-5 и добавили явный
+ * text-zinc-300 — на Android WebView рендерятся нормально (Apple/Noto SVG-движок
+ * не давит глифы как emoji). В кнопке с устройствами внутри карточки подписки
+ * использовали h-3 w-3 (компактнее).
  */
 
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Settings2, Smartphone, Gift, Users, ChevronRight, Box, Calendar, Clock, Plus, Check, Layers, Sparkles, Trash2 } from "lucide-react";
+import { Zap, Settings2, Gift, ChevronRight, Box, Calendar, Clock, Check, Trash2, Layers, Sparkles, Smartphone, Users, Plus } from "lucide-react";
 import { StealthPromocodeModal } from "@/components/stealth/stealth-promocode-modal";
 import { StealthDevicesModal } from "@/components/stealth/stealth-devices-modal";
 import { StealthTrialsModal } from "@/components/stealth/stealth-trials-modal";
+import { StealthModal } from "@/components/stealth/stealth-modal";
 import { ExtendSubscriptionDialog } from "@/components/payment/extend-subscription-dialog";
 import { useClientAuth } from "@/contexts/client-auth";
 import { api } from "@/lib/api";
@@ -107,8 +114,9 @@ export function StealthDashboard() {
   const [paySuccess, setPaySuccess] = useState<PaySuccessKind | null>(null);
   const [autoRenewBusyId, setAutoRenewBusyId] = useState<string | null>(null);
   const [autoRenewError, setAutoRenewError] = useState<{ id: string; message: string } | null>(null);
-  const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
+  const [cancelSub, setCancelSub] = useState<{ id: string; type: "root" | "secondary"; label: string } | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   // T-pay-success-modal: ЕДИНЫЙ детект возврата с любой платёжки (как в classic client-dashboard).
   // Бэкенд редиректит по-разному: ?payment=success, ?yookassa=success, ?heleket=success,
@@ -207,19 +215,18 @@ export function StealthDashboard() {
     }
   }
 
-  // Удаление истёкшей доп. подписки (root удалить нельзя — у него нет кнопки).
-  async function deleteExpiredSubscription(sub: SubCard) {
-    if (!state.token || deleteBusyId) return;
-    if (!window.confirm(`Удалить истёкший тариф «${sub.label}»? Это действие необратимо.`)) return;
-    setDeleteBusyId(sub.id);
-    setDeleteError(null);
+  async function doCancelSubscription() {
+    if (!state.token || !cancelSub) return;
+    setCancelLoading(true);
+    setCancelError(null);
     try {
-      await api.clientDeleteSecondarySubscription(state.token, sub.id);
-      setSubs((prev) => prev?.filter((x) => x.id !== sub.id) ?? prev);
+      await api.clientCancelSubscription(state.token, cancelSub.id, cancelSub.type);
+      setCancelSub(null);
+      setReloadKey((k) => k + 1);
     } catch (e) {
-      setDeleteError({ id: sub.id, message: e instanceof Error ? e.message : "Не удалось удалить тариф" });
+      setCancelError(e instanceof Error ? e.message : "Не удалось отменить подписку");
     } finally {
-      setDeleteBusyId(null);
+      setCancelLoading(false);
     }
   }
 
@@ -264,7 +271,7 @@ export function StealthDashboard() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
-        className="relative rounded-3xl bg-white/[0.04] border border-white/[0.08] p-5 backdrop-blur-2xl space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_48px_-24px_rgba(0,0,0,0.8)] before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-b before:from-white/[0.05] before:to-transparent before:pointer-events-none"
+        className="relative rounded-3xl bg-white/[0.04] border border-white/[0.08] p-5 backdrop-blur-2xl space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_48px_-24px_rgba(0,0,0,0.35)] before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-b before:from-white/[0.05] before:to-transparent before:pointer-events-none"
       >
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-xl font-bold tracking-tight">
@@ -327,9 +334,8 @@ export function StealthDashboard() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    {/* T-no-blink-fix (2026-08-13): раньше тут был animate-ping —
-                        с 3-4 активными подписками одновременно пульсирующие
-                        зелёные точки читались как «мигание». Теперь ровная точка. */}
+                    {/* T-no-blink-fix (2026-08-13): ровная точка без пульсации,
+                        чтобы не выглядело как «мигание» с 3-4 активными подписками. */}
                     <span
                       className={cn(
                         "h-2 w-2 rounded-full shrink-0",
@@ -368,10 +374,12 @@ export function StealthDashboard() {
                       <Calendar className="h-3 w-3 text-saccent-400/80" strokeWidth={2.2} />
                       до {formatDate(s.expiresAt)}
                     </span>
-                    {/* Устройства ЭТОЙ подписки — компактно рядом с датой. */}
+                    {/* Устройства ЭТОЙ подписки — компактно рядом с датой.
+                        T-fix-android-icons rev.2: lucide Smartphone h-3.5
+                        (Android рендерит нормально, Apple/Noto SVG). */}
                     {s.deviceLimit > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 text-[11px] text-zinc-400 shrink-0">
-                        <Smartphone className="h-3 w-3 text-zinc-500" strokeWidth={2.2} />
+                        <Smartphone className="h-3 w-3 shrink-0" strokeWidth={2} />
                         <span className="tabular-nums">
                           {devicesBySubId[s.id] ?? 0}/{s.deviceLimit}
                         </span>
@@ -400,59 +408,46 @@ export function StealthDashboard() {
                     >
                       <Settings2 className="h-3.5 w-3.5" />
                     </button>
-                    {/* Удалить — только истёкшие доп. подписки (root не удаляется). */}
-                    {!s.isActive && s.type === "secondary" && (
-                      <button
-                        onClick={() => deleteExpiredSubscription(s)}
-                        disabled={deleteBusyId !== null}
-                        aria-label="Удалить тариф"
-                        className={cn(
-                          "shrink-0 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-500/45 p-1.5 text-red-400 transition-all duration-300 active:scale-95 inline-flex items-center justify-center",
-                          deleteBusyId !== null && "opacity-60",
-                        )}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
 
-                {deleteError?.id === s.id && (
-                  <p className="text-[10px] leading-snug text-red-400">{deleteError.message}</p>
-                )}
-
-                {/* Тоггл автосписания — только для НЕ-триальных подписок с тарифом. */}
+                {/* Кнопка отмены + тоггл автосписания — только для НЕ-триальных подписок с тарифом.
+                    Тоггл и подпись «Автосписание» сгруппированы справа, кнопка отмены — слева. */}
                 {!s.isTrial && s.tariffId && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2 pt-0.5">
-                      <span className="text-[11px] text-zinc-400">♻️ Автосписание</span>
                       <button
-                        type="button"
-                        role="switch"
-                        aria-checked={s.autoRenewEnabled}
-                        aria-label="Автосписание"
-                        disabled={autoRenewBusyId === s.id}
-                        onClick={() => toggleAutoRenew(s)}
-                        className={cn(
-                          "relative h-5 w-9 rounded-full border transition-colors shrink-0",
-                          s.autoRenewEnabled
-                            ? "bg-emerald-500/80 border-emerald-400/40"
-                            : "bg-zinc-700/70 border-white/[0.08]",
-                          autoRenewBusyId === s.id && "opacity-60",
-                        )}
+                        onClick={() => { setCancelSub({ id: s.id, type: s.type, label: s.label }); setCancelError(null); }}
+                        aria-label="Отменить подписку"
+                        className="shrink-0 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-500/45 p-1.5 text-red-400 transition-all duration-300 active:scale-95 inline-flex items-center justify-center"
                       >
-                        <span
-                          className={cn(
-                            // T-fix-toggle (2026-08-13): без явного left позиция кружка
-                            // зависела от того, как браузер/вебвью считает "auto" для
-                            // абсолютного позиционирования без left — в Telegram WebView
-                            // это давало кружок не в ту сторону. Теперь left зафиксирован
-                            // явно, а translate-x только двигает кружок вправо при включении.
-                            "absolute top-0.5 left-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
-                            s.autoRenewEnabled ? "translate-x-[18px]" : "translate-x-0",
-                          )}
-                        />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-zinc-400">Автосписание</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={s.autoRenewEnabled}
+                          aria-label="Автосписание"
+                          disabled={autoRenewBusyId === s.id}
+                          onClick={() => toggleAutoRenew(s)}
+                          className={cn(
+                            "relative h-5 w-9 rounded-full border transition-colors shrink-0",
+                            s.autoRenewEnabled
+                              ? "bg-emerald-500/80 border-emerald-400/40"
+                              : "bg-zinc-700/70 border-white/[0.08]",
+                            autoRenewBusyId === s.id && "opacity-60",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "absolute top-0.5 left-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
+                              s.autoRenewEnabled ? "translate-x-[18px]" : "translate-x-0",
+                            )}
+                          />
+                        </button>
+                      </div>
                     </div>
                     {autoRenewError?.id === s.id && (
                       <p className="text-[10px] leading-snug text-saccent-400">{autoRenewError.message}</p>
@@ -464,16 +459,13 @@ export function StealthDashboard() {
           </div>
         )}
 
-        {/* Общий счётчик устройств убран — теперь количество показывается
-            на каждой карточке тарифа отдельно (devicesBySubId). */}
-
         {/* Action stack */}
         <div className="space-y-2.5 pt-1">
           <StadiumButton
             variant="ghost"
             size="md"
-            iconLeft={hasAnySub ? <Plus className="h-4 w-4 text-saccent-400" /> : <Zap className="h-4 w-4 text-saccent-400" />}
-            onClick={() => navigate("/cabinet/tariffs")}
+            iconLeft={<Plus className="h-4 w-4 text-saccent-400" strokeWidth={2.5} />}
+            onClick={() => navigate("/cabinet/tariffs?add=1")}
           >
             {hasAnySub ? "Оформить ещё подписку" : "Оформить подписку"}
           </StadiumButton>
@@ -490,7 +482,7 @@ export function StealthDashboard() {
               iconRight={<ChevronRight className="h-4 w-4 text-zinc-500" />}
               onClick={() => setShowTrials(true)}
             >
-              <span className="flex-1 text-left">🎁 Пробный период</span>
+              <span className="flex-1 text-left">Пробный период</span>
             </StadiumButton>
           )}
 
@@ -508,12 +500,15 @@ export function StealthDashboard() {
             <span className="flex-1 text-left">Установить и настроить VPN</span>
           </StadiumButton>
 
+          {/* T-fix-android-icons rev.2 (2026-08-15): lucide h-5 w-5 + явный
+              text-zinc-300. На Android WebView рендерятся как нормальные
+              SVG-глифы (Apple/Noto), без emoji-обёртки. h-4 w-4 без явного
+              цвета давали «кляксу» — теперь h-5 w-5 text-zinc-300 рендерится
+              чётко. */}
           <div className="grid grid-cols-2 gap-2.5">
-            {/* T-stealth-extras (2026-08-13): доп. опции и подарки — рядом с
-                Промокодами/Устройствами, той же ghost-сеткой 2×2. */}
             <StadiumButton
               variant="ghost" size="md"
-              iconLeft={<Layers className="h-4 w-4 text-zinc-400" />}
+              iconLeft={<Layers className="h-5 w-5 text-zinc-300 shrink-0" strokeWidth={2} />}
               onClick={() => navigate("/cabinet/extra-options")}
               className="!text-xs whitespace-nowrap !px-3"
             >
@@ -521,7 +516,7 @@ export function StealthDashboard() {
             </StadiumButton>
             <StadiumButton
               variant="ghost" size="md"
-              iconLeft={<Sparkles className="h-4 w-4 text-zinc-400" />}
+              iconLeft={<Sparkles className="h-5 w-5 text-zinc-300 shrink-0" strokeWidth={2} />}
               onClick={() => navigate("/cabinet/gifts")}
               className="!text-xs whitespace-nowrap !px-3"
             >
@@ -532,7 +527,7 @@ export function StealthDashboard() {
           <div className="grid grid-cols-2 gap-2.5">
             <StadiumButton
               variant="ghost" size="md"
-              iconLeft={<Gift className="h-4 w-4 text-zinc-400" />}
+              iconLeft={<Gift className="h-5 w-5 text-zinc-300 shrink-0" strokeWidth={2} />}
               onClick={() => setShowPromo(true)}
               className="!text-xs whitespace-nowrap !px-3"
             >
@@ -540,7 +535,7 @@ export function StealthDashboard() {
             </StadiumButton>
             <StadiumButton
               variant="ghost" size="md"
-              iconLeft={<Smartphone className="h-4 w-4 text-zinc-400" />}
+              iconLeft={<Smartphone className="h-5 w-5 text-zinc-300 shrink-0" strokeWidth={2} />}
               onClick={() => setShowDevices(true)}
               className="!text-xs whitespace-nowrap !px-3"
             >
@@ -551,7 +546,7 @@ export function StealthDashboard() {
           <StadiumButton
             variant="ghost"
             size="md"
-            iconLeft={<Users className="h-4 w-4 text-zinc-400" />}
+            iconLeft={<Users className="h-5 w-5 text-zinc-300 shrink-0" strokeWidth={2} />}
             onClick={() => navigate("/cabinet/referral")}
           >
             Реферальная система
@@ -657,6 +652,39 @@ export function StealthDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <StealthModal open={!!cancelSub} onClose={() => { if (!cancelLoading) setCancelSub(null); }} title="Отменить подписку?">
+        <div className="space-y-4">
+          {cancelSub && (
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-2">
+              <p className="text-sm text-zinc-400">Подписка: <span className="font-bold text-zinc-100">{cancelSub.label}</span></p>
+              <p className="text-xs text-zinc-500">Деньги за неиспользованный период вернутся на баланс.</p>
+            </div>
+          )}
+          {cancelError && (
+            <p className="text-sm text-red-400 text-center font-bold">{cancelError}</p>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setCancelSub(null)}
+              disabled={cancelLoading}
+              className="flex-1 h-12 rounded-2xl text-sm font-bold text-zinc-300 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] transition active:scale-[0.98]"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={doCancelSubscription}
+              disabled={cancelLoading}
+              className="flex-1 h-12 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:opacity-90 active:scale-[0.98] transition flex items-center justify-center gap-2"
+            >
+              {cancelLoading ? <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {cancelLoading ? "Отменяем…" : "Отменить"}
+            </button>
+          </div>
+        </div>
+      </StealthModal>
     </div>
   );
 }

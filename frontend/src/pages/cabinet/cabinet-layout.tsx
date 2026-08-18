@@ -9,7 +9,7 @@ import { useLanguageSync } from "@/i18n/use-language-sync";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { GlassSelect } from "@/components/ui/glass-select";
-import { LayoutDashboard, Package, User, LogOut, Shield, Users, Sun, Moon, PlusCircle, Globe, KeyRound, MessageSquare, Palette, Monitor, Check, Loader2, Settings, Layers, MoreHorizontal, ChevronDown, Wallet, Gift } from "lucide-react";
+import { LayoutDashboard, Package, User, LogOut, Box, Users, Sun, Moon, PlusCircle, Globe, KeyRound, MessageSquare, Palette, Monitor, Check, Loader2, Settings, Layers, MoreHorizontal, ChevronDown, Wallet, Gift } from "lucide-react";
 import { useTheme, ACCENT_PALETTES, type ThemeMode, type ThemeAccent } from "@/contexts/theme";
 import { cn } from "@/lib/utils";
 import { FloatingChat } from "@/components/floating-chat";
@@ -95,7 +95,7 @@ function Client2FAStepScreen() {
   if (!state.pending2FAToken) return null;
 
   return (
-    <div className="relative min-h-dvh flex items-center justify-center bg-background p-4 sm:p-8 overflow-hidden">
+    <div className="relative min-h-dvh flex items-center justify-center bg-background p-4 sm:p-8 overflow-x-hidden">
       <div className="absolute inset-0 z-0">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[120px]" />
         <div className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-blue-500/20 blur-[120px]" />
@@ -449,7 +449,16 @@ function MobileCabinetShell() {
   const logo = config?.logo && !logoError ? config.logo : null;
 
   return (
-    <div className="tg-fs-pad min-h-svh flex flex-col bg-transparent min-w-0 overflow-x-hidden pb-36 relative">
+    <div
+      className="tg-fs-pad min-h-[100dvh] flex flex-col bg-transparent min-w-0 pb-36 relative"
+      style={{
+        overflowX: "clip",
+        overflowY: "auto",
+        overscrollBehavior: isMiniapp ? "contain" : undefined,
+        touchAction: isMiniapp ? "pan-y" : undefined,
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       <FloatingChat />
       <header className="sticky top-0 z-50 border-b border-border shrink-0 transition-all duration-300" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="absolute inset-0 bg-card/40 backdrop-blur-xl -z-10 pointer-events-none" />
@@ -461,7 +470,7 @@ function MobileCabinetShell() {
               </span>
             ) : (
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary shadow-sm">
-                <Shield className="h-4 w-4" />
+                <Box className="h-4 w-4" />
               </span>
             )}
             {serviceName ? <span className="truncate">{serviceName}</span> : null}
@@ -484,8 +493,8 @@ function MobileCabinetShell() {
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] transition-all duration-300">
-        <div className="flex items-center justify-around w-full h-[4.5rem] px-2 gap-0">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none pb-[env(safe-area-inset-bottom)] transition-all duration-300">
+        <div className="pointer-events-auto flex items-center justify-around w-full h-[4.5rem] px-2 gap-0 border-t border-border bg-card/60 backdrop-blur-xl">
           {visibleItems.map(({ to, label, icon: Icon }) => {
             const active = location.pathname === to;
             return (
@@ -605,7 +614,7 @@ function CabinetShell() {
   }
 
   return (
-    <div className="tg-fs-pad min-h-svh flex flex-col bg-transparent">
+    <div className="tg-fs-pad min-h-[100dvh] flex flex-col bg-transparent">
       <FloatingChat />
       {/* левитирующая glass-капсула: отступ сверху, скруглённые
           края, контейнер шире (100rem против прежних 80rem) — лого уезжает левее,
@@ -619,7 +628,7 @@ function CabinetShell() {
               </span>
             ) : (
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary shadow-sm">
-                <Shield className="h-5 w-5" />
+                <Box className="h-5 w-5" />
               </span>
             )}
             {serviceName ? <span className="hidden sm:inline truncate">{serviceName}</span> : null}

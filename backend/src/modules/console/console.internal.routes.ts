@@ -102,7 +102,7 @@ consoleInternalRouter.get("/metrics", async (_req, res) => {
   }
 
   res.json({
-    serviceName: serviceName ?? "STEALTHNET",
+    serviceName: serviceName ?? "AspectVPN",
     health,
     clients: { total, blocked, newToday, newWeek },
     subscriptions: { active: activeSubs, autoRenew: autoRenewSubs, expiringSoon },

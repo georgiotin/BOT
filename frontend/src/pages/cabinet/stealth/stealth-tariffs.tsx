@@ -117,6 +117,9 @@ export function StealthTariffs() {
   // судьба доп. устройств при продлении (true = сохранить, цена выше).
   const [extKeepExtras, setExtKeepExtras] = useState(true);
 
+  // режим покупки дополнительной подписки (?add=1 с дашборда).
+  const isAdditionalMode = searchParams.get("add") === "1";
+
   const [categories, setCategories] = useState<PublicTariffCategory[]>([]);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -266,18 +269,6 @@ export function StealthTariffs() {
   // там своя, уже существующая логика extendExtrasCost/convExtendExtrasCost).
   const extrasEnabled = !extendTarget && !!currentTariff && hasExtras(currentTariff);
   const includedDevices = currentTariff?.includedDevices ?? 1;
-  const deviceTiles = extrasEnabled
-    ? Array.from({ length: (currentTariff?.maxExtraDevices ?? 0) + 1 }, (_, i) => {
-        const extras = i;
-        const { extrasTotal, pct } = applyExtrasPrice(currentTariff?.pricePerExtraDevice ?? 0, extras, currentTariff?.deviceDiscountTiers, days);
-        return { extras, total: basePrice + extrasTotal, pct, totalDevices: includedDevices + extras };
-      })
-    : [];
-  const bestExtra = deviceTiles.slice(1).reduce((best, cur) => {
-    const perDev = cur.totalDevices > 0 ? cur.total / cur.totalDevices : Infinity;
-    if (best == null || perDev < best.perDev) return { extras: cur.extras, perDev };
-    return best;
-  }, null as { extras: number; perDev: number } | null);
   const newPurchaseExtrasCost = extrasEnabled
     ? applyExtrasPrice(currentTariff?.pricePerExtraDevice ?? 0, selectedExtraDevices, currentTariff?.deviceDiscountTiers, days).extrasTotal
     : 0;
@@ -416,6 +407,8 @@ export function StealthTariffs() {
         // там устройства ведёт extendsSecondarySubId/removeExtrasOnActivate).
         deviceCount: selectedExtraDevices,
         promoCode: promoApplied ?? undefined,
+        // флаг дополнительной подписки (не проверять лимит)
+        ...(isAdditionalMode ? { asAdditional: true } : {}),
         // режим продления конкретной подписки (?extend=) —
         // оплата продлевает ИМЕННО её, а не создаёт новую.
         ...(extendTarget ? { extendsSecondarySubId: extendTarget.id } : {}),
@@ -640,7 +633,7 @@ export function StealthTariffs() {
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="relative rounded-3xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-2xl p-5 space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_48px_-24px_rgba(0,0,0,0.8)] before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-b before:from-white/[0.04] before:to-transparent before:pointer-events-none"
+        className="relative rounded-3xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-2xl p-5 space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_24px_48px_-24px_rgba(0,0,0,0.35)] before:absolute before:inset-0 before:rounded-3xl before:bg-gradient-to-b before:from-white/[0.04] before:to-transparent before:pointer-events-none"
       >
         {priceOptions.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -680,48 +673,33 @@ export function StealthTariffs() {
           <div className="border-t border-white/[0.06] pt-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">Доп. устройства</span>
-              <span className="text-[11px] text-zinc-500 tabular-nums">
-                В тарифе: <strong className="text-zinc-300">{includedDevices}</strong>
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedExtraDevices(Math.max(0, selectedExtraDevices - 1))}
+                  disabled={selectedExtraDevices === 0}
+                  className="h-7 w-7 rounded-lg bg-zinc-900/60 border border-white/[0.08] hover:border-white/20 disabled:opacity-40 flex items-center justify-center text-zinc-300 transition"
+                >
+                  −
+                </button>
+                <span className="text-sm font-bold text-zinc-200 w-6 text-center tabular-nums">{selectedExtraDevices}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExtraDevices(Math.min(currentTariff?.maxExtraDevices ?? 0, selectedExtraDevices + 1))}
+                  disabled={selectedExtraDevices >= (currentTariff?.maxExtraDevices ?? 0)}
+                  className="h-7 w-7 rounded-lg bg-zinc-900/60 border border-white/[0.08] hover:border-white/20 disabled:opacity-40 flex items-center justify-center text-zinc-300 transition"
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {deviceTiles.map((tile) => {
-                const active = tile.extras === selectedExtraDevices;
-                const isBest = bestExtra?.extras === tile.extras && tile.extras > 0 && tile.pct === 0;
-                return (
-                  <motion.button
-                    key={tile.extras}
-                    type="button"
-                    onClick={() => setSelectedExtraDevices(tile.extras)}
-                    whileTap={{ scale: 0.96 }}
-                    className={cn(
-                      "relative overflow-hidden rounded-2xl border p-2.5 text-center transition-all",
-                      "hover:scale-[1.03]",
-                      active
-                        ? "bg-saccent-500/15 border-saccent-500/50 ring-2 ring-saccent-500/40 shadow-[0_0_20px_-6px_rgb(var(--stealth-accent)_/_0.5)]"
-                        : "bg-white/[0.03] border-white/[0.08] hover:border-white/20",
-                    )}
-                  >
-                    {tile.pct > 0 && (
-                      <div className={cn(
-                        "absolute -top-1 -right-1 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow z-10",
-                        "bg-saccent-500 text-white",
-                      )}>
-                        −{tile.pct}%
-                      </div>
-                    )}
-                    {isBest && <Sparkles className="absolute top-1.5 right-1.5 h-3 w-3 text-saccent-400" />}
-                    <p className={cn("text-sm font-bold", active && "text-saccent-300")}>
-                      {tile.extras === 0 ? "Без доп." : `+${tile.extras}`}
-                    </p>
-                    <p className="text-[11px] font-bold text-zinc-200 tabular-nums mt-0.5">
-                      {fmtPrice(tile.total, currency)}
-                    </p>
-                    <p className="text-[9px] text-zinc-500 mt-0.5">{tile.totalDevices} устр</p>
-                    {isBest && <p className="text-[9px] font-medium text-saccent-400 mt-0.5">выгоднее всего</p>}
-                  </motion.button>
-                );
-              })}
+            <div className="text-[11px] text-zinc-500 tabular-nums">
+              В тарифе: <strong className="text-zinc-300">{includedDevices}</strong>
+              {selectedExtraDevices > 0 && (
+                <span className="ml-2">
+                  · Итого устройств: <strong className="text-zinc-300">{includedDevices + selectedExtraDevices}</strong>
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -872,8 +850,8 @@ export function StealthTariffs() {
                     type="button"
                     onClick={() => setConvKeepExtras(false)}
                     className={cn(
-                      "w-full text-left rounded-xl border p-3 transition-all",
-                      !convKeepExtras ? "border-saccent-500/50 bg-saccent-500/10" : "border-white/[0.08] bg-zinc-900/40 hover:border-white/20",
+                      "w-full text-left rounded-xl border p-3 transition-all shadow-[inset_0_0_0_1px_transparent]",
+                      !convKeepExtras ? "border-saccent-500/50 bg-saccent-500/10 shadow-[inset_0_0_0_1px_rgb(var(--stealth-accent)_/_0.15)]" : "border-white/[0.08] bg-zinc-900/40 hover:border-white/20",
                     )}
                   >
                     <p className="text-xs font-bold">⚡ Убрать устройства — без доплаты</p>
@@ -894,9 +872,9 @@ export function StealthTariffs() {
                     type="button"
                     onClick={() => setConvKeepExtras(true)}
                     className={cn(
-                      "w-full text-left rounded-xl border p-3 transition-all",
+                      "w-full text-left rounded-xl border p-3 transition-all shadow-[inset_0_0_0_1px_transparent]",
                       convKeepExtras
-                        ? "border-saccent-500/50 bg-saccent-500/10"
+                        ? "border-saccent-500/50 bg-saccent-500/10 shadow-[inset_0_0_0_1px_rgb(var(--stealth-accent)_/_0.15)]"
                         : "border-white/[0.08] bg-zinc-900/40 hover:border-white/20",
                     )}
                   >
@@ -970,9 +948,9 @@ export function StealthTariffs() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 className={cn(
-                  "rounded-2xl border p-4 transition-colors duration-300 flex flex-col items-center gap-2 backdrop-blur-xl",
+                  "rounded-2xl border p-4 transition-colors duration-300 flex flex-col items-center gap-2 backdrop-blur-xl shadow-[inset_0_0_0_1px_transparent]",
                   active
-                    ? "bg-white/[0.06] border-saccent-500/45 shadow-[0_0_36px_-10px_rgb(var(--stealth-accent)_/_0.5),inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    ? "bg-white/[0.06] border-saccent-500/45 shadow-[0_0_36px_-10px_rgb(var(--stealth-accent)_/_0.5),inset_0_1px_0_rgba(255,255,255,0.08),inset_0_0_0_1px_rgb(var(--stealth-accent)_/_0.2)]"
                     : "bg-white/[0.02] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.04]",
                 )}
               >
@@ -1054,7 +1032,7 @@ export function StealthTariffs() {
             <p className="text-xs text-zinc-400">Списать {fmtPrice(totalPrice, currency)} с баланса и продолжить?</p>
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={() => setBalConfirm(null)} className="flex-1 rounded-xl border border-zinc-700 py-2.5 text-sm font-semibold text-zinc-300 active:scale-95 transition">Отмена</button>
-              <button type="button" onClick={() => { setBalConfirm(null); void doPay(); }} className="flex-1 rounded-xl bg-saccent-500 py-2.5 text-sm font-bold text-white active:scale-95 transition">Да, продолжить</button>
+              <button type="button" onClick={() => { setBalConfirm(null); void doPay(); }} className="flex-1 rounded-xl bg-gradient-to-b from-saccent-500 via-saccent-600 to-saccent-600 py-2.5 text-sm font-bold text-white active:scale-95 transition overflow-hidden shadow-[0_0_20px_-4px_rgb(var(--stealth-accent)_/_0.5),inset_0_1px_0_rgba(255,255,255,0.2)]">Да, продолжить</button>
             </div>
           </div>
         </div>

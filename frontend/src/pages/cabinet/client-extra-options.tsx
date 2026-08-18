@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wifi, Smartphone, Server, CreditCard, Loader2, Wallet, Layers, Shield, Zap, ArrowLeft, Calendar, Check, ChevronRight } from "lucide-react";
+import { Wifi, Smartphone, Server, CreditCard, Loader2, Wallet, Layers, Shield, Zap, ArrowLeft, Calendar, Check, ChevronRight, Plus, Minus } from "lucide-react";
 import { useClientAuth } from "@/contexts/client-auth";
 import { useCabinetDesign } from "@/lib/use-cabinet-design";
 import { StealthExtraOptions } from "@/pages/cabinet/stealth/stealth-extra-options";
@@ -73,8 +73,9 @@ export function ClientExtraOptionsPage() {
 
   // T-unify-cabinet (30.05.2026, WolfVPN): опция применяется к КОНКРЕТНОЙ подписке (как в боте).
   // Грузим все подписки клиента; для devices цена растёт пропорционально остатку дней подписки.
-  const [userSubs, setUserSubs] = useState<{ id: string; subscriptionIndex: number; label: string; expireAt: string | null; emoji: string | null }[]>([]);
+  const [userSubs, setUserSubs] = useState<{ id: string; subscriptionIndex: number; label: string; expireAt: string | null; emoji: string | null; type: "root" | "secondary"; extraDevices: number; extraDevicesMonthlyPrice: number }[]>([]);
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
+  const [deviceQty, setDeviceQty] = useState(1);
 
   const isMobileOrMiniapp = useCabinetMiniapp();
 
@@ -112,6 +113,9 @@ export function ClientExtraOptionsPage() {
           label: it.tariffDisplayName?.trim() || `Подписка #${idx}`,
           expireAt,
           emoji: it.tariffMenuEmoji ?? null,
+          type: it.type ?? "root",
+          extraDevices: it.extraDevices ?? 0,
+          extraDevicesMonthlyPrice: it.extraDevicesMonthlyPrice ?? 0,
         };
       });
       setUserSubs(list);
@@ -148,7 +152,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.yookassaCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.confirmationUrl) setReadyUrl({ url: res.confirmationUrl, provider: "ЮKassa", paymentId: res.paymentId });
     } catch (e) {
@@ -164,7 +168,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.cryptopayCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Crypto Bot", paymentId: res.paymentId });
     } catch (e) {
@@ -180,7 +184,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.heleketCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Heleket", paymentId: res.paymentId });
     } catch (e) {
@@ -196,7 +200,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.rollypayCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "RollyPay", paymentId: res.paymentId });
     } catch (e) {
@@ -212,7 +216,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.lavaCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "LAVA", paymentId: res.paymentId });
     } catch (e) {
@@ -228,7 +232,7 @@ export function ClientExtraOptionsPage() {
     setPayLoading(true);
     try {
       const res = await api.overpayCreatePayment(token, {
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.payUrl) setReadyUrl({ url: res.payUrl, provider: "Overpay", paymentId: res.paymentId });
     } catch (e) {
@@ -245,7 +249,7 @@ export function ClientExtraOptionsPage() {
     try {
       const res = await api.clientCreatePlategaPayment(token, {
         paymentMethod: methodId,
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.paymentUrl) setReadyUrl({ url: res.paymentUrl, provider: "Platega", paymentId: res.paymentId });
     } catch (e) {
@@ -262,7 +266,7 @@ export function ClientExtraOptionsPage() {
     try {
       const res = await api.yoomoneyCreateFormPayment(token, {
         paymentType: "AC",
-        extraOption: { kind: option.kind, productId: option.id, targetSubscriptionId: selectedSubId ?? undefined },
+        extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: deviceQty } : {}), targetSubscriptionId: selectedSubId ?? undefined },
       });
       if (res.paymentUrl) setReadyUrl({ url: res.paymentUrl, provider: "ЮMoney", paymentId: res.paymentId });
     } catch (e) {
@@ -276,14 +280,15 @@ export function ClientExtraOptionsPage() {
     if (!token) return;
     const selSub = userSubs.find((s) => s.id === selectedSubId) ?? null;
     const eff = computeOptionPrice(option, selSub);
-    if (balance < eff.price) {
+    const qty = option.kind === "devices" ? deviceQty : 1;
+    if (balance < eff.price * qty) {
       setPayError("Недостаточно средств на балансе");
       return;
     }
     setPayError(null);
     setPayLoading(true);
     try {
-      await api.clientPayOptionByBalance(token, { extraOption: { kind: option.kind, productId: option.id }, targetSubscriptionId: selectedSubId ?? undefined });
+      await api.clientPayOptionByBalance(token, { extraOption: { kind: option.kind, productId: option.id, ...(option.kind === "devices" ? { deviceCount: qty } : {}) }, targetSubscriptionId: selectedSubId ?? undefined });
       setPayModal(null);
       await refreshProfile();
       setPayError(null);
@@ -292,6 +297,59 @@ export function ClientExtraOptionsPage() {
     } finally {
       setPayLoading(false);
     }
+  }
+
+  // --- Управление доп. устройствами (+/-) ---
+  const [removeDevicesSubId, setRemoveDevicesSubId] = useState<string | null>(null);
+  const [removeLoading, setRemoveLoading] = useState(false);
+
+  function computeRefund(sub: { extraDevicesMonthlyPrice: number; expireAt: string | null } | null): { refund: number; daysLeft: number } {
+    if (!sub || sub.extraDevicesMonthlyPrice <= 0 || !sub.expireAt) return { refund: 0, daysLeft: 0 };
+    const exp = new Date(sub.expireAt).getTime();
+    if (Number.isNaN(exp)) return { refund: 0, daysLeft: 0 };
+    const daysLeft = Math.max(0, (exp - Date.now()) / 86_400_000);
+    const refund = Math.floor(sub.extraDevicesMonthlyPrice * (daysLeft / 30));
+    return { refund: Math.max(0, refund), daysLeft: Math.round(daysLeft) };
+  }
+
+  async function doRemoveExtraDevices() {
+    if (!token || !removeDevicesSubId) return;
+    const sub = userSubs.find((s) => s.id === removeDevicesSubId);
+    if (!sub) return;
+    setRemoveLoading(true);
+    try {
+      await api.clientRemoveExtraDevices(token, sub.type, sub.id);
+      setRemoveDevicesSubId(null);
+      await refreshProfile();
+      api.clientAllSubscriptions(token).then((r) => {
+        const list = (r.items ?? []).map((it) => {
+          const raw = it.subscription as Record<string, unknown> | null;
+          const payload = (raw && typeof raw === "object" && raw.response && typeof raw.response === "object")
+            ? (raw.response as Record<string, unknown>) : (raw ?? null);
+          const expireAt = payload && typeof payload.expireAt === "string" ? payload.expireAt : null;
+          const idx = it.subscriptionIndex ?? 0;
+          return {
+            id: it.id, subscriptionIndex: idx,
+            label: it.tariffDisplayName?.trim() || `Подписка #${idx}`,
+            expireAt, emoji: it.tariffMenuEmoji ?? null,
+            type: it.type ?? "root",
+            extraDevices: it.extraDevices ?? 0,
+            extraDevicesMonthlyPrice: it.extraDevicesMonthlyPrice ?? 0,
+          };
+        });
+        setUserSubs(list);
+      }).catch(() => {});
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : "Ошибка удаления устройств");
+    } finally {
+      setRemoveLoading(false);
+    }
+  }
+
+  /** Находит опцию покупки +1 устройства для оплаты через модалку */
+  function findAddDeviceOption() {
+    // Ищем опцию с deviceCount=1 или первую доступную devices-опцию
+    return deviceOptions.find((o) => o.deviceCount === 1) || deviceOptions[0] || null;
   }
 
   const closePayment = () => {
@@ -305,7 +363,9 @@ export function ClientExtraOptionsPage() {
     // T-unify-cabinet: цена и баланс — по выбранной подписке (devices масштабируется по сроку).
     const selSub = userSubs.find((s) => s.id === selectedSubId) ?? null;
     const eff = computeOptionPrice(payModal, selSub);
-    const hasBalance = balance >= eff.price;
+    const qty = payModal.kind === "devices" ? deviceQty : 1;
+    const totalPrice = eff.price * qty;
+    const hasBalance = balance >= totalPrice;
     const isDeviceProrata = payModal.kind === "devices" && eff.coef > 1;
 
     if (readyUrl) {
@@ -336,12 +396,12 @@ export function ClientExtraOptionsPage() {
                 </p>
                 {!isMobileOrMiniapp && <p className="font-bold text-foreground">{payModal.name || optionLabel(payModal)}</p>}
                 {isMobileOrMiniapp && (
-                   <span className="text-3xl font-black text-primary">{formatMoney(eff.price, payModal.currency)}</span>
+                   <span className="text-3xl font-black text-primary">{formatMoney(totalPrice, payModal.currency)}</span>
                 )}
              </div>
              {!isMobileOrMiniapp && (
                 <div className="text-right">
-                   <span className="font-bold text-xl text-primary">{formatMoney(eff.price, payModal.currency)}</span>
+                   <span className="font-bold text-xl text-primary">{formatMoney(totalPrice, payModal.currency)}</span>
                 </div>
              )}
           </div>
@@ -644,42 +704,114 @@ export function ClientExtraOptionsPage() {
               </section>
             )}
 
-            {deviceOptions.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="flex items-center gap-2 text-lg font-semibold px-2">
-                  <Smartphone className="h-5 w-5 text-primary" />
-                  Устройства (Слоты)
-                </h2>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {deviceOptions.map((opt) => (
-                    <Card key={`devices-${opt.id}`} className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col group hover:-translate-y-1">
-                      <CardContent className="flex-1 flex flex-col p-5 min-h-0 min-w-0">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
-                            {optionIcon(opt)}
+            {deviceOptions.length > 0 && userSubs.length > 0 && (() => {
+              const addOpt = findAddDeviceOption();
+              if (!addOpt) return null;
+              const selSub = userSubs.find((s) => s.id === selectedSubId) ?? userSubs[0] ?? null;
+              const unitEff = computeOptionPrice(addOpt, selSub);
+              const totalPrice = unitEff.price * deviceQty;
+              return (
+                <section className="space-y-4">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold px-2">
+                    <Smartphone className="h-5 w-5 text-primary" />
+                    Дополнительные устройства
+                  </h2>
+                  <Card className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg overflow-hidden">
+                    <CardContent className="p-5 sm:p-6 space-y-6">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                            <Smartphone className="h-5 w-5" />
                           </div>
                           <div>
-                            <h3 className="font-bold text-lg text-foreground truncate">{opt.name || "Слоты устройств"}</h3>
-                            <p className="text-sm text-muted-foreground truncate">{optionLabel(opt)}</p>
+                            <p className="font-bold text-lg text-foreground">Количество устройств</p>
+                            <p className="text-xs text-muted-foreground">{formatMoney(unitEff.price, addOpt.currency)} за 1 шт. / 30 дн.</p>
                           </div>
                         </div>
-                        <div className="mt-auto space-y-4 pt-4 border-t border-border/50">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-extrabold text-foreground">{formatMoney(opt.price, opt.currency)}</span>
-                            {/* T-unify-cabinet: цена базовая за 30 дней — итог зависит от срока подписки */}
-                            <span className="text-xs text-muted-foreground font-medium">/ 30 дней</span>
-                          </div>
-                          <Button onClick={() => setPayModal(opt)} className="w-full gap-2 shadow-md hover:scale-[1.02] transition-transform rounded-xl h-12">
-                            <CreditCard className="h-5 w-5" />
-                            Добавить устройства
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 rounded-xl border-border/50 text-foreground hover:bg-background/80"
+                            disabled={deviceQty <= 1}
+                            onClick={() => setDeviceQty((q) => Math.max(1, q - 1))}
+                          >
+                            <Minus className="h-5 w-5" />
+                          </Button>
+                          <span className="text-3xl font-black tabular-nums text-foreground min-w-[3ch] text-center">{deviceQty}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+                            onClick={() => setDeviceQty((q) => q + 1)}
+                          >
+                            <Plus className="h-5 w-5" />
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 text-primary" />
+                          <span className="font-bold text-sm">К какой подписке</span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {userSubs.map((s) => {
+                            const sEff = computeOptionPrice(addOpt, s);
+                            const active = s.id === (selectedSubId ?? userSubs[0]?.id);
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => setSelectedSubId(s.id)}
+                                className={cn(
+                                  "w-full text-left rounded-2xl border p-3.5 transition-all flex items-center gap-3",
+                                  active
+                                    ? "border-primary/50 bg-primary/[0.08] ring-2 ring-primary/30"
+                                    : "border-border/50 bg-background/40 hover:bg-background/60 hover:border-primary/30"
+                                )}
+                              >
+                                <div className={cn("h-9 w-9 shrink-0 rounded-xl flex items-center justify-center text-base border", active ? "bg-primary/15 border-primary/30" : "bg-foreground/[0.04] border-white/10")}>
+                                  {s.emoji || "📦"}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold leading-tight truncate">
+                                    Подписка #{s.subscriptionIndex} · <span className="font-medium text-muted-foreground">{s.label}</span>
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                                    {formatMoney(sEff.price * deviceQty, addOpt.currency)}
+                                    {sEff.coef > 1 && <span className="text-primary/80"> · ×{sEff.coef} за {sEff.daysLeft} дн</span>}
+                                  </p>
+                                </div>
+                                {active ? <Check className="h-5 w-5 text-primary shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl bg-background/50 border border-border/50 p-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Итого:</span>
+                        <span className="text-2xl font-black text-primary tabular-nums">{formatMoney(totalPrice, addOpt.currency)}</span>
+                      </div>
+
+                      <Button
+                        size="lg"
+                        className="w-full h-14 rounded-xl text-base font-bold shadow-lg hover:scale-[1.02] transition-transform"
+                        onClick={() => {
+                          if (!selSub) return;
+                          setSelectedSubId(selSub.id);
+                          setPayModal(addOpt);
+                        }}
+                      >
+                        <CreditCard className="h-5 w-5 mr-2" />
+                        Оплатить {formatMoney(totalPrice, addOpt.currency)}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </section>
+              );
+            })()}
 
             {serverOptions.length > 0 && (
               <section className="space-y-4">
@@ -742,6 +874,51 @@ export function ClientExtraOptionsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Диалог подтверждения удаления доп. устройств */}
+      <Dialog open={!!removeDevicesSubId} onOpenChange={(open) => { if (!open && !removeLoading) setRemoveDevicesSubId(null); }}>
+        <DialogContent className="w-full max-w-md mx-auto sm:rounded-3xl p-5 sm:p-6 border border-border/50 bg-card/60 backdrop-blur-3xl shadow-2xl" showCloseButton={!removeLoading}>
+          <DialogHeader className="mb-4 text-center sm:text-left">
+            <DialogTitle className="text-xl font-bold flex items-center justify-center sm:justify-start gap-2">
+              <div className="p-2 bg-destructive/10 rounded-xl">
+                <Minus className="h-6 w-6 text-destructive" />
+              </div>
+              Удалить доп. устройства?
+            </DialogTitle>
+            <DialogDescription className="hidden" />
+          </DialogHeader>
+          {(() => {
+            const sub = userSubs.find((s) => s.id === removeDevicesSubId);
+            if (!sub) return null;
+            const { refund, daysLeft } = computeRefund(sub);
+            return (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-border/50 bg-background/50 p-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">Подписка: <span className="font-bold text-foreground">{sub.label}</span></p>
+                  <p className="text-sm text-muted-foreground">Доп. устройств: <span className="font-bold text-foreground">{sub.extraDevices}</span></p>
+                  <p className="text-sm text-muted-foreground">Осталось дней: <span className="font-bold text-foreground">{daysLeft}</span></p>
+                  <div className="pt-2 border-t border-border/50 flex items-baseline gap-2">
+                    <span className="text-sm text-muted-foreground">Возврат на баланс:</span>
+                    <span className="text-2xl font-black text-emerald-500">{formatMoney(refund, "RUB")}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Все доп. устройства будут отключены. Деньги вернутся на баланс.
+                </p>
+              </div>
+            );
+          })()}
+          <DialogFooter className="mt-4 sm:justify-center gap-2 border-t border-border/50 pt-4">
+            <Button variant="ghost" onClick={() => setRemoveDevicesSubId(null)} disabled={removeLoading} className="rounded-xl hover:bg-background/50 text-muted-foreground">
+              Отмена
+            </Button>
+            <Button variant="destructive" onClick={doRemoveExtraDevices} disabled={removeLoading} className="rounded-xl gap-2">
+              {removeLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
+              {removeLoading ? "Удаляем…" : "Удалить все"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

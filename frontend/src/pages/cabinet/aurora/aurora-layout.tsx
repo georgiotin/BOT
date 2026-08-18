@@ -17,7 +17,7 @@
  */
 
 import { Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, type PublicConfig } from "@/lib/api";
 import { AuroraTabs } from "@/components/aurora/aurora-tabs";
 
@@ -37,6 +37,12 @@ function toGradientEnd([r, g, b]: [number, number, number]): string {
 
 export function AuroraLayout() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
+
+  const isDesktop = useMemo(() => {
+    const tg = (window as { Telegram?: { WebApp?: { platform?: string } } }).Telegram?.WebApp;
+    if (!tg?.platform) return false;
+    return tg.platform === "tdesktop" || tg.platform === "web" || tg.platform === "weba" || tg.platform === "webk";
+  }, []);
 
   useEffect(() => {
     api.getPublicConfig().then(setConfig).catch(() => {});
@@ -62,7 +68,7 @@ export function AuroraLayout() {
 
   return (
     <div
-      className="tg-fs-pad min-h-screen w-full bg-[var(--au-bg)] text-[var(--au-ink)] relative overflow-x-hidden"
+      className="tg-fs-pad min-h-[100dvh] w-full bg-[var(--au-bg)] text-[var(--au-ink)] relative"
       style={
         {
           "--au-from": from,
@@ -72,11 +78,22 @@ export function AuroraLayout() {
           "--au-nav": "#f2f3f7",
           "--au-ink": "#0f1222",
           "--au-muted": "#8b90a3",
+          overflowX: "clip",
+          overflowY: "auto",
+          overscrollBehavior: isDesktop ? undefined : "contain",
+          touchAction: isDesktop ? undefined : "pan-y",
+          WebkitOverflowScrolling: "touch",
         } as React.CSSProperties
       }
     >
       {/* запас снизу под плавающее меню + safe-area */}
-      <main className="relative mx-auto max-w-md px-4 pt-4 pb-32">
+      <main
+        className="relative mx-auto max-w-md px-4 pt-4 pb-32"
+        style={{
+          touchAction: isDesktop ? undefined : "pan-y",
+          overscrollBehavior: isDesktop ? undefined : "contain",
+        }}
+      >
         <Outlet />
       </main>
 
